@@ -64,15 +64,19 @@ Generic JWT SSO integration for Label Studio - works with any JWT-based authenti
 ## Use Cases
 
 ### 1. Things-Factory Integration
+
 Integrate Label Studio with Things-Factory enterprise application framework.
 
 ### 2. Custom SSO System
+
 Integrate Label Studio with your custom authentication system using JWT.
 
 ### 3. Multi-System Integration
+
 Use Label Studio with multiple external systems, each with their own JWT issuer.
 
 ### 4. Microservices Architecture
+
 Integrate Label Studio into microservices with centralized authentication.
 
 ## Requirements
@@ -88,9 +92,9 @@ MIT License - see [LICENSE](../LICENSE) for details.
 
 ## Support
 
-- **GitHub Issues**: [Report bugs](https://github.com/hatiolab/label-studio-sso/issues)
-- **GitHub Discussions**: [Ask questions](https://github.com/hatiolab/label-studio-sso/discussions)
-- **Documentation**: [Full docs](https://github.com/hatiolab/label-studio-sso/blob/main/README.md)
+- **GitHub Issues**: [Report bugs](https://github.com/aidoop/label-studio-sso/issues)
+- **GitHub Discussions**: [Ask questions](https://github.com/aidoop/label-studio-sso/discussions)
+- **Documentation**: [Full docs](https://github.com/aidoop/label-studio-sso/blob/main/README.md)
 
 ## Contributing
 

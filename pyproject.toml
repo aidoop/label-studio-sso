@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "label-studio-sso"
-version = "1.0.0"
-description = "Generic JWT SSO integration for Label Studio - works with any JWT-based system"
+version = "3.0.0"
+description = "Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Things-Factory Integration Team", email = "admin@hatiolab.com"}
+    {name = "Things-Factory Integration Team", email = "admin@aidoop.com"}
 ]
 keywords = ["label-studio", "sso", "jwt", "things-factory", "authentication"]
 classifiers = [
@@ -40,10 +40,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hatiolab/label-studio-sso"
-Documentation = "https://github.com/hatiolab/label-studio-sso/blob/main/README.md"
-Repository = "https://github.com/hatiolab/label-studio-sso"
-Issues = "https://github.com/hatiolab/label-studio-sso/issues"
+Homepage = "https://github.com/aidoop/label-studio-sso"
+Documentation = "https://github.com/aidoop/label-studio-sso/blob/main/README.md"
+Repository = "https://github.com/aidoop/label-studio-sso"
+Issues = "https://github.com/aidoop/label-studio-sso/issues"
 
 [tool.black]
 line-length = 100

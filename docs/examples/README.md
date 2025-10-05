@@ -9,6 +9,7 @@ Example integrations of Label Studio SSO with various systems.
 Complete integration example with Things-Factory enterprise framework.
 
 **Features:**
+
 - iframe embedding
 - User synchronization
 - Permission mapping
@@ -23,6 +24,7 @@ Complete integration example with Things-Factory enterprise framework.
 Generic integration example for any custom JWT-based authentication system.
 
 **Features:**
+
 - Node.js/Express implementation
 - Python/Flask implementation
 - Django implementation
@@ -44,11 +46,13 @@ Generic integration example for any custom JWT-based authentication system.
 All integrations require:
 
 1. **Install label-studio-sso**
+
    ```bash
    pip install label-studio-sso
    ```
 
 2. **Configure Django Settings**
+
    ```python
    INSTALLED_APPS = [..., 'label_studio_sso']
    AUTHENTICATION_BACKENDS = ['label_studio_sso.backends.JWTAuthenticationBackend', ...]
@@ -57,11 +61,12 @@ All integrations require:
    ```
 
 3. **Generate JWT Tokens in Your System**
+
    ```javascript
    const token = jwt.sign(
      { email: user.email, iat: now, exp: now + 600 },
      JWT_SECRET,
-     { algorithm: 'HS256' }
+     { algorithm: "HS256" }
    );
    ```
 
@@ -73,21 +78,24 @@ All integrations require:
 ### 3. Integration Patterns
 
 #### Pattern A: Direct Redirect
+
 ```javascript
-app.get('/label-studio', (req, res) => {
+app.get("/label-studio", (req, res) => {
   const token = generateJWT(req.user);
   res.redirect(`https://label-studio.com/?token=${token}`);
 });
 ```
 
 #### Pattern B: iframe Embedding
+
 ```html
 <iframe src="https://label-studio.com/?token=YOUR_TOKEN"></iframe>
 ```
 
 #### Pattern C: API + Dynamic Loading
+
 ```javascript
-const { token } = await fetch('/api/label-studio-token').then(r => r.json());
+const { token } = await fetch("/api/label-studio-token").then((r) => r.json());
 iframe.src = `https://label-studio.com/?token=${token}`;
 ```
 
@@ -96,7 +104,7 @@ iframe.src = `https://label-studio.com/?token=${token}`;
 ### JavaScript/Node.js
 
 ```javascript
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 function generateLabelStudioToken(user, secret) {
   return jwt.sign(
@@ -105,10 +113,10 @@ function generateLabelStudioToken(user, secret) {
       first_name: user.firstName,
       last_name: user.lastName,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 600
+      exp: Math.floor(Date.now() / 1000) + 600,
     },
     secret,
-    { algorithm: 'HS256' }
+    { algorithm: "HS256" }
   );
 }
 ```
@@ -136,7 +144,7 @@ def generate_label_studio_token(user, secret):
 ### TypeScript
 
 ```typescript
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 interface User {
   email: string;
@@ -148,13 +156,13 @@ function generateLabelStudioToken(user: User, secret: string): string {
   return jwt.sign(
     {
       email: user.email,
-      first_name: user.firstName || '',
-      last_name: user.lastName || '',
+      first_name: user.firstName || "",
+      last_name: user.lastName || "",
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 600
+      exp: Math.floor(Date.now() / 1000) + 600,
     },
     secret,
-    { algorithm: 'HS256' }
+    { algorithm: "HS256" }
   );
 }
 ```
@@ -190,6 +198,7 @@ tail -f /var/log/label-studio/label-studio.log | grep "JWT"
 **Cause:** JWT secrets don't match
 
 **Solution:**
+
 ```bash
 # Check both systems use same secret
 echo $JWT_SSO_SECRET  # Your system
@@ -203,6 +212,7 @@ python manage.py shell  # Label Studio
 **Cause:** User doesn't exist in Label Studio
 
 **Solution:**
+
 ```python
 # Enable auto-create
 JWT_SSO_AUTO_CREATE_USERS = True
@@ -216,6 +226,7 @@ python manage.py createsuperuser --email user@example.com
 **Cause:** CORS not configured
 
 **Solution:**
+
 ```python
 # Label Studio settings
 CORS_ALLOWED_ORIGINS = [
@@ -244,4 +255,4 @@ Have an integration example to share? Please contribute!
 - [Configuration Guide](../configuration.md)
 - [API Reference](../api-reference.md)
 - [Troubleshooting](../troubleshooting.md)
-- [GitHub Issues](https://github.com/hatiolab/label-studio-sso/issues)
+- [GitHub Issues](https://github.com/aidoop/label-studio-sso/issues)

@@ -1,5 +1,5 @@
 """
-Tests for Things-Factory JWT Authentication Backend
+Tests for JWT Authentication Backend
 """
 
 import pytest
@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 import jwt
 from datetime import datetime, timedelta
 
-from label_studio_sso.backends import ThingsFactoryJWTBackend
+from label_studio_sso.backends import JWTAuthenticationBackend
 
 User = get_user_model()
 
@@ -26,7 +26,7 @@ def request_factory():
 
 @pytest.fixture
 def backend():
-    return ThingsFactoryJWTBackend()
+    return JWTAuthenticationBackend()
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def user(db):
 
 
 @pytest.mark.django_db
-class TestThingsFactoryJWTBackend:
+class TestJWTAuthenticationBackend:
 
     def test_authenticate_with_valid_token(self, backend, request_factory, user, jwt_secret):
         """Test authentication with a valid JWT token"""
@@ -56,7 +56,11 @@ class TestThingsFactoryJWTBackend:
         request = request_factory.get('/')
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is not None
@@ -78,7 +82,11 @@ class TestThingsFactoryJWTBackend:
         request = request_factory.get('/')
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is None
@@ -99,7 +107,11 @@ class TestThingsFactoryJWTBackend:
         request = request_factory.get('/')
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is None
@@ -119,7 +131,11 @@ class TestThingsFactoryJWTBackend:
         request = request_factory.get('/')
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = False  # Don't auto-create
             authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is None
@@ -146,7 +162,11 @@ class TestThingsFactoryJWTBackend:
         request = request_factory.get('/')
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is None

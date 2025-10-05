@@ -7,6 +7,7 @@ Common issues and solutions for `label-studio-sso`.
 ### 1. JWT Token Signature Verification Failed
 
 **Error Message:**
+
 ```
 ERROR: JWT token signature verification failed
 ```
@@ -30,6 +31,7 @@ python manage.py shell
 ```
 
 **Prevention:**
+
 - Store secret in a shared secret management system
 - Use environment variables consistently
 - Document the secret generation process
@@ -39,6 +41,7 @@ python manage.py shell
 ### 2. User Not Found in Label Studio
 
 **Error Message:**
+
 ```
 WARNING: User not found in Label Studio: user@example.com
 ```
@@ -48,18 +51,21 @@ WARNING: User not found in Label Studio: user@example.com
 **Solution:**
 
 **Option 1: Create user manually**
+
 ```bash
 cd /path/to/label-studio
 python manage.py createsuperuser --email user@example.com
 ```
 
 **Option 2: Enable auto-create**
+
 ```python
 # Django settings
 JWT_SSO_AUTO_CREATE_USERS = True
 ```
 
 **Option 3: Sync users from external system**
+
 ```python
 # Use Things-Factory user sync or custom sync script
 ```
@@ -69,6 +75,7 @@ JWT_SSO_AUTO_CREATE_USERS = True
 ### 3. JWT Token Has Expired
 
 **Error Message:**
+
 ```
 WARNING: JWT token has expired
 ```
@@ -94,6 +101,7 @@ token = jwt.encode(
 ```
 
 **Best Practice:**
+
 - Development: 1 hour expiration
 - Production: 5-10 minutes expiration
 - Implement token refresh mechanism
@@ -103,12 +111,14 @@ token = jwt.encode(
 ### 4. No Auto-Login (User Not Logged In)
 
 **Symptoms:**
+
 - Token in URL but user not logged in
 - Redirected to login page
 
 **Causes & Solutions:**
 
 **A. Middleware not configured**
+
 ```python
 # Check MIDDLEWARE in settings.py
 MIDDLEWARE = [
@@ -120,6 +130,7 @@ MIDDLEWARE = [
 ```
 
 **B. Wrong middleware order**
+
 ```python
 # ❌ Wrong
 MIDDLEWARE = [
@@ -135,6 +146,7 @@ MIDDLEWARE = [
 ```
 
 **C. Token parameter name mismatch**
+
 ```python
 # Settings
 JWT_SSO_TOKEN_PARAM = 'sso_token'
@@ -149,6 +161,7 @@ http://label-studio.com/?token=eyJhbGc...      # ❌
 ### 5. JWT_SSO_SECRET Not Configured
 
 **Error Message:**
+
 ```
 ERROR: JWT_SSO_SECRET is not configured
 ```
@@ -176,6 +189,7 @@ python manage.py shell
 ### 6. CORS Errors in iframe
 
 **Error Message (Browser Console):**
+
 ```
 Access to XMLHttpRequest at 'http://label-studio.com' from origin 'http://things-factory.com' has been blocked by CORS policy
 ```
@@ -200,6 +214,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # ⚠️ Never use in production
 ### 7. iframe Not Loading (X-Frame-Options)
 
 **Error Message (Browser Console):**
+
 ```
 Refused to display 'http://label-studio.com' in a frame because it set 'X-Frame-Options' to 'DENY'
 ```
@@ -221,6 +236,7 @@ X_FRAME_OPTIONS = 'ALLOW-FROM https://things-factory.example.com'
 ### 8. Invalid JWT Token Format
 
 **Error Message:**
+
 ```
 ERROR: Invalid JWT token: Not enough segments
 ```
@@ -256,6 +272,7 @@ except Exception as e:
 ### 9. Token Missing Required Claims
 
 **Error Message:**
+
 ```
 WARNING: JWT token does not contain 'email' claim
 ```
@@ -285,6 +302,7 @@ JWT_SSO_EMAIL_CLAIM = 'user_email'  # If your token uses different claim
 ### 10. Users Auto-Created with Wrong Permissions
 
 **Symptoms:**
+
 - Users created but can't access Label Studio features
 - Permission denied errors
 
@@ -327,6 +345,7 @@ LOGGING = {
 ```
 
 **Log Output:**
+
 ```
 DEBUG: No JWT token provided
 INFO: JWT token detected in URL, attempting auto-login
@@ -413,20 +432,23 @@ python manage.py shell
 ### 5. Browser Developer Tools
 
 **Check iframe URL:**
+
 ```javascript
 // Browser console
-const iframe = document.querySelector('iframe');
+const iframe = document.querySelector("iframe");
 console.log(iframe.src);
 // Should include: ?token=eyJhbGc...
 ```
 
 **Check localStorage:**
+
 ```javascript
 // Browser console
-console.log(localStorage.getItem('access-token'));
+console.log(localStorage.getItem("access-token"));
 ```
 
 **Check network requests:**
+
 1. Open DevTools → Network tab
 2. Access Label Studio with token
 3. Look for authentication-related requests
@@ -439,6 +461,7 @@ console.log(localStorage.getItem('access-token'));
 Use this checklist to diagnose issues:
 
 ### Configuration
+
 - [ ] `label_studio_sso` in `INSTALLED_APPS`
 - [ ] `JWTAuthenticationBackend` in `AUTHENTICATION_BACKENDS` (first)
 - [ ] `JWTAutoLoginMiddleware` in `MIDDLEWARE` (after `AuthenticationMiddleware`)
@@ -446,6 +469,7 @@ Use this checklist to diagnose issues:
 - [ ] `JWT_SSO_SECRET` matches external system
 
 ### Token
+
 - [ ] Token included in URL: `?token=...`
 - [ ] Token format valid (3 parts: header.payload.signature)
 - [ ] Token not expired
@@ -453,11 +477,13 @@ Use this checklist to diagnose issues:
 - [ ] Token signature verifies with `JWT_SSO_SECRET`
 
 ### User
+
 - [ ] User exists in Label Studio (or auto-create enabled)
 - [ ] User has correct email
 - [ ] User is active (`is_active=True`)
 
 ### Network
+
 - [ ] CORS configured for external domain
 - [ ] X-Frame-Options allows iframe
 - [ ] HTTPS used (production)
@@ -470,6 +496,7 @@ Use this checklist to diagnose issues:
 If you're still stuck:
 
 1. **Check Logs:**
+
    ```bash
    # Django logs
    tail -f /var/log/label-studio/label-studio.log | grep "JWT"
@@ -479,11 +506,13 @@ If you're still stuck:
    ```
 
 2. **Search GitHub Issues:**
-   - [Existing issues](https://github.com/hatiolab/label-studio-sso/issues)
+
+   - [Existing issues](https://github.com/aidoop/label-studio-sso/issues)
    - Search for error message
 
 3. **Create New Issue:**
    Include:
+
    - Python version (`python --version`)
    - Django version (`pip show django`)
    - Label Studio version (`pip show label-studio`)
@@ -493,7 +522,7 @@ If you're still stuck:
    - Steps to reproduce
 
 4. **Ask in Discussions:**
-   - [GitHub Discussions](https://github.com/hatiolab/label-studio-sso/discussions)
+   - [GitHub Discussions](https://github.com/aidoop/label-studio-sso/discussions)
 
 ---
 

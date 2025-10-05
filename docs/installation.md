@@ -22,20 +22,22 @@ pip install label-studio-sso
 ### Method 2: Install from GitHub
 
 **Latest version:**
+
 ```bash
-pip install git+https://github.com/hatiolab/label-studio-sso.git
+pip install git+https://github.com/aidoop/label-studio-sso.git
 ```
 
 **Specific version:**
+
 ```bash
-pip install git+https://github.com/hatiolab/label-studio-sso.git@v1.0.0
+pip install git+https://github.com/aidoop/label-studio-sso.git@v1.0.0
 ```
 
 ### Method 3: Install from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/hatiolab/label-studio-sso.git
+git clone https://github.com/aidoop/label-studio-sso.git
 cd label-studio-sso
 
 # Install in development mode
@@ -49,7 +51,7 @@ pip install .
 
 ```bash
 # Download the wheel file
-wget https://github.com/hatiolab/label-studio-sso/releases/download/v1.0.0/label_studio_sso-1.0.0-py3-none-any.whl
+wget https://github.com/aidoop/label-studio-sso/releases/download/v1.0.0/label_studio_sso-1.0.0-py3-none-any.whl
 
 # Install
 pip install label_studio_sso-1.0.0-py3-none-any.whl
@@ -183,6 +185,7 @@ ImportError: No module named 'label_studio_sso'
 ```
 
 **Solution:**
+
 ```bash
 # Verify installation
 pip list | grep label-studio-sso
@@ -206,6 +209,7 @@ PermissionError: [Errno 13] Permission denied
 ```
 
 **Solution:**
+
 ```bash
 # Use sudo (if needed)
 sudo pip install label-studio-sso
@@ -221,6 +225,7 @@ ERROR: pip's dependency resolver does not currently take into account all the pa
 ```
 
 **Solution:**
+
 ```bash
 # Check Django version
 python -c "import django; print(django.VERSION)"
@@ -255,7 +260,7 @@ pip uninstall label-studio-sso
 If you encounter issues during installation:
 
 1. Check [Troubleshooting Guide](troubleshooting.md)
-2. Search [GitHub Issues](https://github.com/hatiolab/label-studio-sso/issues)
+2. Search [GitHub Issues](https://github.com/aidoop/label-studio-sso/issues)
 3. Create a new issue with:
    - Python version (`python --version`)
    - Django version (`pip show django`)

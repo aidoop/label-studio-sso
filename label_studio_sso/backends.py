@@ -53,6 +53,13 @@ class JWTAuthenticationBackend(ModelBackend):
         Returns:
             User object if authentication succeeds, None otherwise
         """
+        # Check if this is a DRF Token authentication request - bypass to DRF
+        if request:
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            if auth_header.startswith('Token '):
+                logger.debug("DRF Token detected, bypassing JWT backend")
+                return None
+
         # Extract token from URL parameter if not provided
         if not token and request:
             token_param = getattr(settings, 'JWT_SSO_TOKEN_PARAM', 'token')
@@ -85,14 +92,45 @@ class JWTAuthenticationBackend(ModelBackend):
 
             # Extract email from token
             email = payload.get(email_claim)
+            username = payload.get(username_claim) if username_claim else None
+
+            print(f"[JWT Backend] Payload: {payload}")
+            print(f"[JWT Backend] email_claim={email_claim}, email={email}")
+            print(f"[JWT Backend] username_claim={username_claim}, username={username}")
+
+            # If no email, try to find user by username
             if not email:
-                logger.warning(f"JWT token does not contain '{email_claim}' claim")
-                return None
+                if not username:
+                    logger.warning(f"JWT token does not contain '{email_claim}' or '{username_claim}' claim")
+                    print(f"[JWT Backend] No email or username found in token!")
+                    return None
+
+                logger.info(f"No email in JWT, attempting to find user by username: {username}")
+                print(f"[JWT Backend] No email in JWT, searching by username: {username}")
+
+                # Try to get existing user by username
+                try:
+                    user = User.objects.get(username=username)
+                    logger.info(f"User found by username: {username}")
+                    return user
+                except User.DoesNotExist:
+                    # Try to find user where email starts with username@
+                    try:
+                        user = User.objects.get(email__istartswith=f"{username}@")
+                        logger.info(f"User found by email prefix: {user.email}")
+                        return user
+                    except User.DoesNotExist:
+                        logger.warning(f"User not found for username: {username}")
+                        return None
+                    except User.MultipleObjectsReturned:
+                        logger.warning(f"Multiple users found with email prefix: {username}@")
+                        return None
 
             logger.info(f"JWT token verified for email: {email}")
 
             # Get username from token or use email
-            username = payload.get(username_claim) if username_claim else email
+            if not username:
+                username = email
 
             # Try to get existing user
             try:
@@ -154,7 +192,3 @@ class JWTAuthenticationBackend(ModelBackend):
             return User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return None
-
-
-# Backward compatibility alias for Things-Factory
-ThingsFactoryJWTBackend = JWTAuthenticationBackend

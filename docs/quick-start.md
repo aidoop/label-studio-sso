@@ -5,6 +5,7 @@ Get up and running with Label Studio SSO in 5 minutes.
 ## Overview
 
 This guide will walk you through:
+
 1. Installing the package
 2. Configuring Label Studio
 3. Testing SSO authentication
@@ -90,24 +91,26 @@ python manage.py createsuperuser --email test@example.com
 In your external system (Things-Factory, custom app, etc.), generate a JWT token:
 
 **Node.js Example:**
+
 ```javascript
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const token = jwt.sign(
   {
-    email: 'test@example.com',
-    name: 'Test User',
+    email: "test@example.com",
+    name: "Test User",
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 600  // 10 minutes
+    exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
   },
-  'your-shared-secret-key-here',
-  { algorithm: 'HS256' }
+  "your-shared-secret-key-here",
+  { algorithm: "HS256" }
 );
 
 console.log(token);
 ```
 
 **Python Example:**
+
 ```python
 import jwt
 import time
@@ -135,6 +138,7 @@ http://localhost:8080/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Expected Result:**
+
 - User is automatically logged in
 - Redirected to Label Studio dashboard
 - User session is established
@@ -160,14 +164,14 @@ tail -f /var/log/label-studio/label-studio.log | grep "JWT"
 
 ```javascript
 // app.js
-const express = require('express');
-const jwt = require('jsonwebtoken');
+const express = require("express");
+const jwt = require("jsonwebtoken");
 
 const app = express();
-const JWT_SECRET = 'your-shared-secret-key-here';
-const LABEL_STUDIO_URL = 'http://localhost:8080';
+const JWT_SECRET = "your-shared-secret-key-here";
+const LABEL_STUDIO_URL = "http://localhost:8080";
 
-app.get('/label-studio', (req, res) => {
+app.get("/label-studio", (req, res) => {
   const user = req.user; // Your authenticated user
 
   const token = jwt.sign(
@@ -175,10 +179,10 @@ app.get('/label-studio', (req, res) => {
       email: user.email,
       name: user.name,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 600
+      exp: Math.floor(Date.now() / 1000) + 600,
     },
     JWT_SECRET,
-    { algorithm: 'HS256' }
+    { algorithm: "HS256" }
   );
 
   const labelStudioUrl = `${LABEL_STUDIO_URL}/?token=${token}`;
@@ -186,7 +190,7 @@ app.get('/label-studio', (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+  console.log("Server running on http://localhost:3000");
 });
 ```
 
@@ -196,34 +200,34 @@ app.listen(3000, () => {
 <!-- Embed Label Studio in your app -->
 <!DOCTYPE html>
 <html>
-<head>
-  <title>My App - Label Studio</title>
-</head>
-<body>
-  <h1>Data Labeling</h1>
+  <head>
+    <title>My App - Label Studio</title>
+  </head>
+  <body>
+    <h1>Data Labeling</h1>
 
-  <iframe
-    id="label-studio-iframe"
-    src="http://localhost:8080/?token=YOUR_JWT_TOKEN"
-    width="100%"
-    height="800px"
-    frameborder="0"
-    allow="fullscreen"
-  ></iframe>
+    <iframe
+      id="label-studio-iframe"
+      src="http://localhost:8080/?token=YOUR_JWT_TOKEN"
+      width="100%"
+      height="800px"
+      frameborder="0"
+      allow="fullscreen"
+    ></iframe>
 
-  <script>
-    // Generate token dynamically
-    async function loadLabelStudio() {
-      const response = await fetch('/api/generate-label-studio-token');
-      const { token } = await response.json();
+    <script>
+      // Generate token dynamically
+      async function loadLabelStudio() {
+        const response = await fetch("/api/generate-label-studio-token");
+        const { token } = await response.json();
 
-      const iframe = document.getElementById('label-studio-iframe');
-      iframe.src = `http://localhost:8080/?token=${token}`;
-    }
+        const iframe = document.getElementById("label-studio-iframe");
+        iframe.src = `http://localhost:8080/?token=${token}`;
+      }
 
-    loadLabelStudio();
-  </script>
-</body>
+      loadLabelStudio();
+    </script>
+  </body>
 </html>
 ```
 
@@ -234,6 +238,7 @@ app.listen(3000, () => {
 **Cause:** JWT secrets don't match
 
 **Solution:**
+
 ```bash
 # Check secrets match
 # External system secret
@@ -250,6 +255,7 @@ cat /path/to/label-studio/.env | grep JWT_SSO_SECRET
 **Cause:** User doesn't exist and auto-create is disabled
 
 **Solution:**
+
 ```bash
 # Option 1: Create user manually
 python manage.py createsuperuser --email test@example.com
@@ -263,8 +269,9 @@ python manage.py createsuperuser --email test@example.com
 **Cause:** JWT token has expired
 
 **Solution:** Generate a new token with longer expiration:
+
 ```javascript
-exp: Math.floor(Date.now() / 1000) + 3600  // 1 hour instead of 10 minutes
+exp: Math.floor(Date.now() / 1000) + 3600; // 1 hour instead of 10 minutes
 ```
 
 ### Issue 4: No auto-login
@@ -272,6 +279,7 @@ exp: Math.floor(Date.now() / 1000) + 3600  // 1 hour instead of 10 minutes
 **Cause:** Middleware not loaded or misconfigured
 
 **Solution:**
+
 ```bash
 # Check Django settings
 python manage.py diffsettings | grep MIDDLEWARE
@@ -306,5 +314,5 @@ Before deploying to production:
 Need help?
 
 - Check [Troubleshooting Guide](troubleshooting.md)
-- Search [GitHub Issues](https://github.com/hatiolab/label-studio-sso/issues)
-- Ask in [GitHub Discussions](https://github.com/hatiolab/label-studio-sso/discussions)
+- Search [GitHub Issues](https://github.com/aidoop/label-studio-sso/issues)
+- Ask in [GitHub Discussions](https://github.com/aidoop/label-studio-sso/discussions)

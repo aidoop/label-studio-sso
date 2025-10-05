@@ -5,6 +5,7 @@ Complete example of integrating Label Studio with Things-Factory.
 ## Overview
 
 This example shows how to:
+
 1. Configure Label Studio SSO for Things-Factory
 2. Generate JWT tokens in Things-Factory
 3. Embed Label Studio in Things-Factory iframe
@@ -47,24 +48,26 @@ LABEL_STUDIO_API_TOKEN=your-api-token-here
 ### 2. Config File
 
 **config/label-studio.config.js**:
+
 ```javascript
 module.exports = {
   labelStudio: {
-    serverUrl: process.env.LABEL_STUDIO_URL || 'http://localhost:8080',
-    apiToken: process.env.LABEL_STUDIO_API_TOKEN || '',
-    interfaces: 'panel,controls,annotations:menu'
-  }
-}
+    serverUrl: process.env.LABEL_STUDIO_URL || "http://localhost:8080",
+    apiToken: process.env.LABEL_STUDIO_API_TOKEN || "",
+    interfaces: "panel,controls,annotations:menu",
+  },
+};
 ```
 
 ### 3. Client Component
 
 **client/label-studio-wrapper.ts**:
-```typescript
-import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
 
-@customElement('label-studio-wrapper')
+```typescript
+import { LitElement, html, css } from "lit";
+import { customElement, state } from "lit/decorators.js";
+
+@customElement("label-studio-wrapper")
 export class LabelStudioWrapper extends LitElement {
   static styles = css`
     :host {
@@ -79,7 +82,7 @@ export class LabelStudioWrapper extends LitElement {
     }
   `;
 
-  @state() private iframeUrl: string = '';
+  @state() private iframeUrl: string = "";
 
   async connectedCallback() {
     super.connectedCallback();
@@ -91,12 +94,12 @@ export class LabelStudioWrapper extends LitElement {
     const config = await this.getConfig();
 
     // Get JWT token from localStorage
-    const token = localStorage.getItem('access-token');
+    const token = localStorage.getItem("access-token");
 
     // Build URL with token and interfaces
     const params = new URLSearchParams({
-      token: token || '',
-      interfaces: config.interfaces || 'panel,controls,annotations:menu'
+      token: token || "",
+      interfaces: config.interfaces || "panel,controls,annotations:menu",
     });
 
     this.iframeUrl = `${config.serverUrl}?${params.toString()}`;
@@ -105,8 +108,8 @@ export class LabelStudioWrapper extends LitElement {
   async getConfig() {
     // Fetch from Things-Factory GraphQL or config
     return {
-      serverUrl: 'http://localhost:8080',
-      interfaces: 'panel,controls,annotations:menu'
+      serverUrl: "http://localhost:8080",
+      interfaces: "panel,controls,annotations:menu",
     };
   }
 
@@ -126,22 +129,23 @@ export class LabelStudioWrapper extends LitElement {
 ### 4. Server Route
 
 **server/route.ts**:
-```typescript
-import { config } from '@things-factory/env';
 
-const LabelStudioConfig = config.get('labelStudio', {});
+```typescript
+import { config } from "@things-factory/env";
+
+const LabelStudioConfig = config.get("labelStudio", {});
 
 if (LabelStudioConfig.enabled !== false) {
-  process.on('bootstrap-module-menu', (_, menus) => {
+  process.on("bootstrap-module-menu", (_, menus) => {
     menus.push({
-      name: 'label-studio',
-      icon: 'label',
+      name: "label-studio",
+      icon: "label",
       childrens: [
         {
-          name: 'data-labeling',
-          template: 'label-studio-wrapper'
-        }
-      ]
+          name: "data-labeling",
+          template: "label-studio-wrapper",
+        },
+      ],
     });
   });
 }
@@ -158,6 +162,7 @@ pip install label-studio-sso
 ### 2. Django Settings
 
 **label_studio/core/settings/base.py**:
+
 ```python
 import os
 
@@ -232,10 +237,11 @@ mutation {
 ### 2. User Provisioning Service
 
 **server/controller/user-provisioning-service.ts**:
+
 ```typescript
-import axios from 'axios';
-import { User } from '@things-factory/auth-base';
-import { config } from '@things-factory/env';
+import axios from "axios";
+import { User } from "@things-factory/auth-base";
+import { config } from "@things-factory/env";
 
 export class UserProvisioningService {
   static async syncUser(domain: Domain, user: User): Promise<SyncResult> {
@@ -243,18 +249,18 @@ export class UserProvisioningService {
 
     // Check Label Studio privileges
     const hasLSPrivilege =
-      (await User.hasPrivilege('label-studio', 'query', domain, user)) ||
-      (await User.hasPrivilege('label-studio', 'mutation', domain, user));
+      (await User.hasPrivilege("label-studio", "query", domain, user)) ||
+      (await User.hasPrivilege("label-studio", "mutation", domain, user));
 
     if (!hasLSPrivilege) {
-      return { success: true, email: user.email, action: 'skipped' };
+      return { success: true, email: user.email, action: "skipped" };
     }
 
     // Map permissions
     const lsPermissions = {
       is_superuser: user.owner === true,
       is_staff: user.owner === true,
-      is_active: true
+      is_active: true,
     };
 
     // Create/update user in Label Studio
@@ -264,30 +270,30 @@ export class UserProvisioningService {
       {
         email: user.email,
         username: user.email,
-        first_name: user.name?.split(' ')[0] || '',
-        last_name: user.name?.split(' ').slice(1).join(' ') || '',
-        ...lsPermissions
+        first_name: user.name?.split(" ")[0] || "",
+        last_name: user.name?.split(" ").slice(1).join(" ") || "",
+        ...lsPermissions,
       },
       {
         headers: {
-          Authorization: `Token ${config.apiToken}`
-        }
+          Authorization: `Token ${config.apiToken}`,
+        },
       }
     );
 
     return {
       success: true,
       email: user.email,
-      action: 'created',
+      action: "created",
       lsUserId: response.data.id.toString(),
-      lsPermissions: user.owner ? 'Admin' : 'Staff'
+      lsPermissions: user.owner ? "Admin" : "Staff",
     };
   }
 
   private static getConfig() {
-    return config.get('labelStudio', {
-      serverUrl: '',
-      apiToken: ''
+    return config.get("labelStudio", {
+      serverUrl: "",
+      apiToken: "",
     });
   }
 }
@@ -308,18 +314,19 @@ export class UserProvisioningService {
 ```
 
 **Token Generation (Things-Factory)**:
+
 ```typescript
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 const token = jwt.sign(
   {
     email: user.email,
     name: user.name,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 600
+    exp: Math.floor(Date.now() / 1000) + 600,
   },
   process.env.JWT_SSO_SECRET,
-  { algorithm: 'HS256' }
+  { algorithm: "HS256" }
 );
 ```
 
@@ -335,7 +342,7 @@ User → Things-Factory → Label Studio Menu → label-studio-wrapper component
 
 ```typescript
 // label-studio-wrapper.ts
-const token = localStorage.getItem('access-token');
+const token = localStorage.getItem("access-token");
 ```
 
 ### 3. iframe URL
@@ -357,17 +364,18 @@ https://label-studio.example.com/?token=eyJhbGc...&interfaces=panel,controls,ann
 ### 5. UI Rendering
 
 Label Studio shows minimal UI:
+
 - Panel (navigation: undo, redo, reset)
 - Controls (submit, update, skip)
 - Annotations menu
 
 ## Permission Mapping
 
-| Things-Factory | Label Studio |
-|----------------|--------------|
-| label-studio + Owner | Admin (is_superuser=true) |
-| label-studio | Staff (is_superuser=false) |
-| No label-studio | Inactive (is_active=false) |
+| Things-Factory       | Label Studio               |
+| -------------------- | -------------------------- |
+| label-studio + Owner | Admin (is_superuser=true)  |
+| label-studio         | Staff (is_superuser=false) |
+| No label-studio      | Inactive (is_active=false) |
 
 ## Testing
 
@@ -395,11 +403,13 @@ http://localhost:8080/?token=YOUR_TOKEN&interfaces=panel,controls,annotations:me
 ### 3. Verify Logs
 
 **Things-Factory:**
+
 ```bash
 DEBUG=things-factory:*,typeorm:* yarn workspace @things-factory/operato-mms run serve:dev
 ```
 
 **Label Studio:**
+
 ```bash
 tail -f /var/log/label-studio/label-studio.log | grep "JWT"
 ```
@@ -409,6 +419,7 @@ tail -f /var/log/label-studio/label-studio.log | grep "JWT"
 ### Issue 1: Token Not Valid
 
 **Check secret match:**
+
 ```bash
 # Things-Factory
 echo $JWT_SSO_SECRET
@@ -422,6 +433,7 @@ python manage.py shell
 ### Issue 2: User Not Synced
 
 **Run sync:**
+
 ```graphql
 mutation {
   syncAllUsersToLabelStudio {
@@ -435,6 +447,7 @@ mutation {
 ### Issue 3: iframe Not Loading
 
 **Check CORS:**
+
 ```python
 # Label Studio settings
 CORS_ALLOWED_ORIGINS = [
@@ -458,4 +471,4 @@ CORS_ALLOWED_ORIGINS = [
 ## Related Documentation
 
 - [Things-Factory Integration Module](https://github.com/hatiolab/things-factory/tree/main/packages/integration-label-studio)
-- [Label Studio SSO Package](https://github.com/hatiolab/label-studio-sso)
+- [Label Studio SSO Package](https://github.com/aidoop/label-studio-sso)

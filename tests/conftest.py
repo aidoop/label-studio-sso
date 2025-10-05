@@ -2,39 +2,35 @@
 Pytest configuration for label-studio-sso tests
 """
 
-import os
-import django
+import pytest
+import jwt
+from datetime import datetime, timedelta
 from django.conf import settings
 
-# Configure Django settings for tests
-if not settings.configured:
-    settings.configure(
-        DEBUG=True,
-        DATABASES={
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': ':memory:',
-            }
-        },
-        INSTALLED_APPS=[
-            'django.contrib.auth',
-            'django.contrib.contenttypes',
-            'django.contrib.sessions',
-            'label_studio_sso',
-        ],
-        MIDDLEWARE=[
-            'django.middleware.security.SecurityMiddleware',
-            'django.contrib.sessions.middleware.SessionMiddleware',
-            'django.middleware.common.CommonMiddleware',
-            'django.contrib.auth.middleware.AuthenticationMiddleware',
-            'label_studio_sso.middleware.ThingsFactoryAutoLoginMiddleware',
-        ],
-        AUTHENTICATION_BACKENDS=[
-            'label_studio_sso.backends.ThingsFactoryJWTBackend',
-            'django.contrib.auth.backends.ModelBackend',
-        ],
-        SECRET_KEY='test-secret-key-for-django',
-        THINGS_FACTORY_JWT_SECRET='test-jwt-secret',
-        USE_TZ=True,
-    )
-    django.setup()
+
+@pytest.fixture
+def jwt_secret():
+    """JWT secret key for tests"""
+    return settings.JWT_SSO_SECRET
+
+
+@pytest.fixture
+def user_data():
+    """Sample user data for tests"""
+    return {
+        'email': 'test@example.com',
+        'username': 'testuser',
+        'first_name': 'Test',
+        'last_name': 'User',
+    }
+
+
+@pytest.fixture
+def valid_jwt_token(jwt_secret, user_data):
+    """Generate a valid JWT token for tests"""
+    payload = {
+        **user_data,
+        'iat': datetime.utcnow(),
+        'exp': datetime.utcnow() + timedelta(minutes=10)
+    }
+    return jwt.encode(payload, jwt_secret, algorithm='HS256')

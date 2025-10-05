@@ -9,6 +9,7 @@ This example demonstrates how to integrate Label Studio SSO with any custom auth
 ## Scenario
 
 You have a custom application that:
+
 - Issues JWT tokens for authenticated users
 - Wants to embed Label Studio
 - Needs seamless SSO integration
@@ -54,6 +55,7 @@ pip install label-studio-sso
 ### Django Settings
 
 **label_studio/core/settings/base.py**:
+
 ```python
 import os
 
@@ -103,17 +105,17 @@ sudo systemctl restart label-studio
 
 ```javascript
 // app.js
-const express = require('express');
-const jwt = require('jsonwebtoken');
+const express = require("express");
+const jwt = require("jsonwebtoken");
 
 const app = express();
-const JWT_SECRET = 'x7KjN9mP2vL5wQ8rT4gH1nY6uB3sC0dE9fA5xZ7kM2p';
-const LABEL_STUDIO_URL = 'https://label-studio.example.com';
+const JWT_SECRET = "x7KjN9mP2vL5wQ8rT4gH1nY6uB3sC0dE9fA5xZ7kM2p";
+const LABEL_STUDIO_URL = "https://label-studio.example.com";
 
 // Middleware to check if user is authenticated
 function requireAuth(req, res, next) {
   if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return res.status(401).json({ error: "Not authenticated" });
   }
   next();
 }
@@ -126,28 +128,28 @@ function generateLabelStudioToken(user) {
       first_name: user.firstName,
       last_name: user.lastName,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 600  // 10 minutes
+      exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
     },
     JWT_SECRET,
-    { algorithm: 'HS256' }
+    { algorithm: "HS256" }
   );
 }
 
 // Route to redirect to Label Studio with SSO
-app.get('/label-studio', requireAuth, (req, res) => {
+app.get("/label-studio", requireAuth, (req, res) => {
   const token = generateLabelStudioToken(req.user);
   const labelStudioUrl = `${LABEL_STUDIO_URL}/?token=${token}`;
   res.redirect(labelStudioUrl);
 });
 
 // API endpoint to get token (for iframe)
-app.get('/api/label-studio-token', requireAuth, (req, res) => {
+app.get("/api/label-studio-token", requireAuth, (req, res) => {
   const token = generateLabelStudioToken(req.user);
   res.json({ token, url: LABEL_STUDIO_URL });
 });
 
 app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+  console.log("Server running on http://localhost:3000");
 });
 ```
 
@@ -255,63 +257,63 @@ def label_studio_token_api(request):
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>My App - Label Studio</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-    }
-
-    .header {
-      background: #333;
-      color: white;
-      padding: 15px;
-    }
-
-    .content {
-      display: flex;
-      height: calc(100vh - 50px);
-    }
-
-    iframe {
-      flex: 1;
-      border: none;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>My Application - Data Labeling</h1>
-  </div>
-
-  <div class="content">
-    <iframe id="label-studio-iframe"></iframe>
-  </div>
-
-  <script>
-    async function loadLabelStudio() {
-      try {
-        // Fetch token from your API
-        const response = await fetch('/api/label-studio-token');
-        const data = await response.json();
-
-        // Build iframe URL with token
-        const iframe = document.getElementById('label-studio-iframe');
-        iframe.src = `${data.url}?token=${data.token}`;
-
-        console.log('Label Studio loaded successfully');
-      } catch (error) {
-        console.error('Failed to load Label Studio:', error);
-        alert('Failed to load Label Studio. Please try again.');
+  <head>
+    <title>My App - Label Studio</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
       }
-    }
 
-    // Load Label Studio when page loads
-    loadLabelStudio();
-  </script>
-</body>
+      .header {
+        background: #333;
+        color: white;
+        padding: 15px;
+      }
+
+      .content {
+        display: flex;
+        height: calc(100vh - 50px);
+      }
+
+      iframe {
+        flex: 1;
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>My Application - Data Labeling</h1>
+    </div>
+
+    <div class="content">
+      <iframe id="label-studio-iframe"></iframe>
+    </div>
+
+    <script>
+      async function loadLabelStudio() {
+        try {
+          // Fetch token from your API
+          const response = await fetch("/api/label-studio-token");
+          const data = await response.json();
+
+          // Build iframe URL with token
+          const iframe = document.getElementById("label-studio-iframe");
+          iframe.src = `${data.url}?token=${data.token}`;
+
+          console.log("Label Studio loaded successfully");
+        } catch (error) {
+          console.error("Failed to load Label Studio:", error);
+          alert("Failed to load Label Studio. Please try again.");
+        }
+      }
+
+      // Load Label Studio when page loads
+      loadLabelStudio();
+    </script>
+  </body>
 </html>
 ```
 
@@ -319,17 +321,17 @@ def label_studio_token_api(request):
 
 ```jsx
 // LabelStudioEmbed.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 function LabelStudioEmbed() {
-  const [iframeUrl, setIframeUrl] = useState('');
+  const [iframeUrl, setIframeUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     async function loadLabelStudio() {
       try {
-        const response = await fetch('/api/label-studio-token');
+        const response = await fetch("/api/label-studio-token");
         const data = await response.json();
 
         setIframeUrl(`${data.url}?token=${data.token}`);
@@ -352,10 +354,10 @@ function LabelStudioEmbed() {
   }
 
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
+    <div style={{ width: "100%", height: "100vh" }}>
       <iframe
         src={iframeUrl}
-        style={{ width: '100%', height: '100%', border: 'none' }}
+        style={{ width: "100%", height: "100%", border: "none" }}
         allow="fullscreen"
         title="Label Studio"
       />
@@ -393,10 +395,10 @@ User.objects.create(
 
 ```javascript
 // sync-users.js
-const axios = require('axios');
+const axios = require("axios");
 
-const LABEL_STUDIO_URL = 'https://label-studio.example.com';
-const LABEL_STUDIO_API_TOKEN = 'your-label-studio-api-token';
+const LABEL_STUDIO_URL = "https://label-studio.example.com";
+const LABEL_STUDIO_API_TOKEN = "your-label-studio-api-token";
 
 async function syncUser(user) {
   const response = await axios.post(
@@ -405,12 +407,12 @@ async function syncUser(user) {
       email: user.email,
       username: user.email,
       first_name: user.firstName,
-      last_name: user.lastName
+      last_name: user.lastName,
     },
     {
       headers: {
-        'Authorization': `Token ${LABEL_STUDIO_API_TOKEN}`
-      }
+        Authorization: `Token ${LABEL_STUDIO_API_TOKEN}`,
+      },
     }
   );
 
@@ -476,18 +478,18 @@ JWT_SSO_LAST_NAME_CLAIM = 'family_name'
 ### 1. Generate Test Token
 
 ```javascript
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const token = jwt.sign(
   {
-    email: 'test@example.com',
-    first_name: 'Test',
-    last_name: 'User',
+    email: "test@example.com",
+    first_name: "Test",
+    last_name: "User",
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 600
+    exp: Math.floor(Date.now() / 1000) + 600,
   },
-  'x7KjN9mP2vL5wQ8rT4gH1nY6uB3sC0dE9fA5xZ7kM2p',
-  { algorithm: 'HS256' }
+  "x7KjN9mP2vL5wQ8rT4gH1nY6uB3sC0dE9fA5xZ7kM2p",
+  { algorithm: "HS256" }
 );
 
 console.log(token);
@@ -520,20 +522,20 @@ tail -f /var/log/label-studio/label-studio.log | grep "JWT"
 const JWT_SECRET = process.env.JWT_SSO_SECRET;
 
 // ❌ Bad
-const JWT_SECRET = 'hardcoded-secret';
+const JWT_SECRET = "hardcoded-secret";
 ```
 
 ### 2. Short Token Expiration
 
 ```javascript
 // ✅ Good: 10 minutes
-exp: Math.floor(Date.now() / 1000) + 600
+exp: Math.floor(Date.now() / 1000) + 600;
 
 // ⚠️ Acceptable for development: 1 hour
-exp: Math.floor(Date.now() / 1000) + 3600
+exp: Math.floor(Date.now() / 1000) + 3600;
 
 // ❌ Bad: 1 day
-exp: Math.floor(Date.now() / 1000) + 86400
+exp: Math.floor(Date.now() / 1000) + 86400;
 ```
 
 ### 3. HTTPS Only (Production)
@@ -549,8 +551,8 @@ SESSION_COOKIE_SECURE = True
 ```javascript
 // Validate before signing
 function validateUser(user) {
-  if (!user.email) throw new Error('Email required');
-  if (!user.email.includes('@')) throw new Error('Invalid email');
+  if (!user.email) throw new Error("Email required");
+  if (!user.email.includes("@")) throw new Error("Invalid email");
   return true;
 }
 ```
@@ -560,6 +562,7 @@ function validateUser(user) {
 ### Token Not Working
 
 **Check secret match:**
+
 ```bash
 # Your app
 echo $JWT_SSO_SECRET
@@ -573,6 +576,7 @@ python manage.py shell
 ### User Not Created
 
 **Enable auto-create:**
+
 ```python
 JWT_SSO_AUTO_CREATE_USERS = True
 ```
@@ -580,6 +584,7 @@ JWT_SSO_AUTO_CREATE_USERS = True
 ### CORS Errors
 
 **Add your domain:**
+
 ```python
 CORS_ALLOWED_ORIGINS = [
     'https://your-app.example.com',
@@ -588,7 +593,7 @@ CORS_ALLOWED_ORIGINS = [
 
 ## Complete Working Example
 
-See the [full example repository](https://github.com/hatiolab/label-studio-sso-example) for a complete working implementation.
+See the [full example repository](https://github.com/aidoop/label-studio-sso-example) for a complete working implementation.
 
 ## Related Examples
 

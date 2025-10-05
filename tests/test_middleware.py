@@ -1,15 +1,16 @@
 """
-Tests for Things-Factory Auto-Login Middleware
+Tests for JWT Auto-Login Middleware
 """
 
 import pytest
 from django.test import RequestFactory
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.backends.db import SessionStore
 from unittest.mock import Mock, patch, MagicMock
 import jwt
 from datetime import datetime, timedelta
 
-from label_studio_sso.middleware import ThingsFactoryAutoLoginMiddleware
+from label_studio_sso.middleware import JWTAutoLoginMiddleware
 
 User = get_user_model()
 
@@ -32,7 +33,7 @@ def get_response():
 
 @pytest.fixture
 def middleware(get_response):
-    return ThingsFactoryAutoLoginMiddleware(get_response)
+    return JWTAutoLoginMiddleware(get_response)
 
 
 @pytest.fixture
@@ -44,7 +45,7 @@ def user(db):
 
 
 @pytest.mark.django_db
-class TestThingsFactoryAutoLoginMiddleware:
+class TestJWTAutoLoginMiddleware:
 
     def test_auto_login_with_valid_token(self, middleware, request_factory, user, jwt_secret, get_response):
         """Test auto-login with a valid JWT token in URL"""
@@ -61,10 +62,15 @@ class TestThingsFactoryAutoLoginMiddleware:
 
         request = request_factory.get(f'/?token={token}')
         request.user = MagicMock(is_authenticated=False)
-        request.session = {}
+        request.session = SessionStore()
+        request.session.create()
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             with patch('label_studio_sso.middleware.login') as mock_login:
                 response = middleware(request)
 
@@ -75,8 +81,9 @@ class TestThingsFactoryAutoLoginMiddleware:
     def test_skip_if_already_authenticated(self, middleware, request_factory, user, get_response):
         """Test middleware skips processing if user is already authenticated"""
         request = request_factory.get('/?token=some-token')
-        request.user = user
-        request.user.is_authenticated = True
+        request.user = user  # Real authenticated user
+        request.session = SessionStore()
+        request.session.create()
 
         with patch('label_studio_sso.middleware.login') as mock_login:
             response = middleware(request)
@@ -110,9 +117,15 @@ class TestThingsFactoryAutoLoginMiddleware:
 
         request = request_factory.get(f'/?token={token}')
         request.user = MagicMock(is_authenticated=False)
+        request.session = SessionStore()
+        request.session.create()
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
-            mock_settings.THINGS_FACTORY_JWT_SECRET = jwt_secret
+            mock_settings.JWT_SSO_SECRET = jwt_secret
+            mock_settings.JWT_SSO_ALGORITHM = 'HS256'
+            mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
+            mock_settings.JWT_SSO_USERNAME_CLAIM = 'username'
+            mock_settings.JWT_SSO_AUTO_CREATE_USERS = False  # Don't auto-create, expect failure
             with patch('label_studio_sso.middleware.login') as mock_login:
                 response = middleware(request)
 

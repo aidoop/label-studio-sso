@@ -1,66 +1,73 @@
-# Label Studio SSO - Generic JWT Integration
+# Label Studio SSO - Universal JWT Authentication
 
-JWT 토큰을 사용한 범용 Label Studio SSO 플러그인
+Universal JWT-based Single Sign-On (SSO) authentication plugin for Label Studio.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Version: 3.0.0](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
 
 ---
 
-## 🎯 개요
+## 🎯 Overview
 
-이 패키지는 **모든 외부 시스템의 JWT 토큰**을 사용하여 Label Studio에 자동 로그인하는 범용 SSO 플러그인입니다.
+This package provides a simple, universal JWT-based authentication backend for **Label Studio** that works with any external system capable of issuing JWT tokens.
 
-> **원래 용도**: Things-Factory와 Label Studio 통합을 위해 개발되었으나, 이제 **어떤 JWT 기반 시스템과도 통합 가능**합니다.
+### Key Features
 
-### 특징
-
-- ✅ **범용 JWT 지원**: 모든 JWT 기반 시스템과 통합 가능
-- ✅ **간단한 설치**: `pip install label-studio-sso`
-- ✅ **유연한 설정**: JWT claim 매핑 완전 커스터마이징
-- ✅ **비침투적**: Label Studio 원본 코드 수정 없음
-- ✅ **완전 독립**: Label Studio 버전 업그레이드 영향 없음
-- ✅ **자동 사용자 생성**: 옵션으로 사용자 자동 생성 지원
+- ✅ **Universal JWT Support**: Works with any JWT-issuing system
+- ✅ **URL Parameter Authentication**: Pass JWT tokens via URL parameters
+- ✅ **Configurable JWT Claims**: Map any JWT claim to user fields
+- ✅ **Auto-User Creation**: Optionally create users automatically from JWT data
+- ✅ **Zero Label Studio Modifications**: Pure Django plugin, no core changes needed
+- ✅ **Framework Agnostic**: Integrate with Node.js, Python, Java, .NET, or any JWT-capable system
 
 ---
 
-## 📦 설치
+## 📦 Installation
 
-### 1. pip으로 설치
+### 1. Install via pip
 
 ```bash
 pip install label-studio-sso
 ```
 
-### 2. 환경 변수 설정
+---
+
+## 🚀 Quick Start
+
+### 1. Configure Environment Variables
 
 ```bash
-# 필수: JWT 시크릿 키 (외부 시스템과 공유)
+# Required: JWT secret key (must match your external system)
 export JWT_SSO_SECRET="your-shared-secret-key"
 
-# 선택: 추가 설정 (기본값이 있음)
-export JWT_SSO_ALGORITHM="HS256"              # JWT 알고리즘 (기본: HS256)
-export JWT_SSO_TOKEN_PARAM="token"            # URL 파라미터 이름 (기본: token)
-export JWT_SSO_EMAIL_CLAIM="email"            # 이메일 claim 이름 (기본: email)
-export JWT_SSO_AUTO_CREATE_USERS="false"      # 사용자 자동 생성 (기본: false)
+# Optional: Customize JWT settings
+export JWT_SSO_ALGORITHM="HS256"                    # Default: HS256
+export JWT_SSO_TOKEN_PARAM="token"                  # Default: token
+export JWT_SSO_EMAIL_CLAIM="email"                  # Default: email
+export JWT_SSO_USERNAME_CLAIM="username"            # Default: None (uses email)
+export JWT_SSO_AUTO_CREATE_USERS="false"            # Default: false
 ```
 
-### 3. Label Studio settings.py 수정
+### 2. Update Label Studio Settings
+
+Add to `label_studio/core/settings/label_studio.py`:
 
 ```python
-# label_studio/core/settings/base.py
-
+# Add to INSTALLED_APPS
 INSTALLED_APPS = [
-    # ... 기존 앱들 ...
-    'label_studio_sso',  # ✅ 추가
+    # ... existing apps ...
+    'label_studio_sso',  # Add this
 ]
 
+# Add to AUTHENTICATION_BACKENDS (must be first!)
 AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.JWTAuthenticationBackend',  # ✅ 추가 (최우선)
+    'label_studio_sso.backends.JWTAuthenticationBackend',  # Add this first
     'rules.permissions.ObjectPermissionBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# Add to MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -70,261 +77,257 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'core.middleware.XApiKeySupportMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'label_studio_sso.middleware.JWTAutoLoginMiddleware',  # ✅ 추가
-    # ... 나머지 미들웨어 ...
+    'label_studio_sso.middleware.JWTAutoLoginMiddleware',  # Add this after AuthenticationMiddleware
+    # ... rest of middleware ...
 ]
 
-# JWT SSO 설정
+# JWT SSO Configuration
 JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')
 JWT_SSO_ALGORITHM = os.getenv('JWT_SSO_ALGORITHM', 'HS256')
 JWT_SSO_TOKEN_PARAM = os.getenv('JWT_SSO_TOKEN_PARAM', 'token')
 JWT_SSO_EMAIL_CLAIM = os.getenv('JWT_SSO_EMAIL_CLAIM', 'email')
-JWT_SSO_USERNAME_CLAIM = os.getenv('JWT_SSO_USERNAME_CLAIM', None)  # None이면 email 사용
-JWT_SSO_FIRST_NAME_CLAIM = os.getenv('JWT_SSO_FIRST_NAME_CLAIM', 'first_name')
-JWT_SSO_LAST_NAME_CLAIM = os.getenv('JWT_SSO_LAST_NAME_CLAIM', 'last_name')
+JWT_SSO_USERNAME_CLAIM = os.getenv('JWT_SSO_USERNAME_CLAIM', None)
 JWT_SSO_AUTO_CREATE_USERS = os.getenv('JWT_SSO_AUTO_CREATE_USERS', 'false').lower() == 'true'
 ```
 
-### 4. Things-Factory와 통합하는 경우
+### 3. How It Works
 
-Things-Factory 전용 backward compatibility alias를 사용할 수 있습니다:
-
-```python
-# 기존 Things-Factory 설정도 그대로 작동
-AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.ThingsFactoryJWTBackend',  # 여전히 작동
-    # ...
-]
-
-MIDDLEWARE = [
-    # ...
-    'label_studio_sso.middleware.ThingsFactoryAutoLoginMiddleware',  # 여전히 작동
-    # ...
-]
-
-# Things-Factory용 간단한 설정
-THINGS_FACTORY_JWT_SECRET = os.getenv('THINGS_FACTORY_JWT_SECRET')
-# 내부적으로 JWT_SSO_SECRET으로 자동 매핑됨
+```
+External System (Your App)
+  ↓ Generate JWT token with user info
+  ↓ Create URL: https://label-studio.example.com?token=eyJhbGc...
+  ↓
+User clicks link or iframe loads
+  ↓
+Label Studio
+  ↓ JWTAutoLoginMiddleware extracts token from URL
+  ↓ JWTAuthenticationBackend validates JWT signature
+  ↓ Extract user info from JWT claims
+  ↓ Find or create Label Studio user
+  ↓ Auto-login user
+  ✅ User authenticated!
 ```
 
 ---
 
-## 🚀 사용 방법
+## 🔧 Usage Examples
 
-### 사용 사례
-
-#### 사례 1: Things-Factory 통합
-
-Things-Factory에서 Label Studio를 iframe으로 임베드하고 자동 로그인:
+### Example 1: Node.js/Express Integration
 
 ```javascript
-// Things-Factory에서 JWT 토큰 생성
-const token = jwt.sign(
-  { email: 'user@example.com', name: 'John Doe' },
-  process.env.JWT_SECRET,
-  { expiresIn: '10m' }
-)
+const jwt = require('jsonwebtoken');
 
-// Label Studio URL with token
-const labelStudioUrl = `https://label-studio.example.com?token=${token}`
+// Generate JWT token for user
+const token = jwt.sign(
+  {
+    email: "user@example.com",
+    username: "john_doe",
+    first_name: "John",
+    last_name: "Doe",
+    exp: Math.floor(Date.now() / 1000) + (10 * 60)  // 10 minutes
+  },
+  process.env.JWT_SSO_SECRET,
+  { algorithm: 'HS256' }
+);
+
+// Redirect user to Label Studio
+const labelStudioUrl = `https://label-studio.example.com?token=${token}`;
+res.redirect(labelStudioUrl);
 ```
 
-#### 사례 2: 커스텀 포털 통합
-
-자체 제작한 웹 포털에서 Label Studio로 SSO 연결:
+### Example 2: Python/Django Integration
 
 ```python
-# 커스텀 포털에서 JWT 토큰 생성
 import jwt
 from datetime import datetime, timedelta
 
-token = jwt.encode({
-    'email': user.email,
-    'first_name': user.first_name,
-    'last_name': user.last_name,
-    'exp': datetime.utcnow() + timedelta(minutes=10)
-}, settings.JWT_SECRET, algorithm='HS256')
+# Generate JWT token
+token = jwt.encode(
+    {
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'exp': datetime.utcnow() + timedelta(minutes=10)
+    },
+    settings.JWT_SSO_SECRET,
+    algorithm='HS256'
+)
 
-# Label Studio로 리다이렉트
-redirect_url = f"https://label-studio.example.com?token={token}"
+# Embed in iframe or redirect
+label_studio_url = f"https://label-studio.example.com?token={token}"
 ```
 
-#### 사례 3: 기존 인증 시스템 통합
+### Example 3: Java/Spring Boot Integration
 
-기존 JWT 기반 인증 시스템과 통합 (custom claim 매핑):
+```java
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+
+// Generate JWT token
+String token = Jwts.builder()
+    .claim("email", user.getEmail())
+    .claim("first_name", user.getFirstName())
+    .claim("last_name", user.getLastName())
+    .setExpiration(new Date(System.currentTimeMillis() + 600000))  // 10 minutes
+    .signWith(SignatureAlgorithm.HS256, jwtSecret)
+    .compact();
+
+// Redirect to Label Studio
+String labelStudioUrl = "https://label-studio.example.com?token=" + token;
+return "redirect:" + labelStudioUrl;
+```
+
+### Example 4: Custom JWT Claims Mapping
+
+If your JWT uses different claim names:
 
 ```bash
-# JWT 토큰에 user_email 필드를 사용하는 경우
+# Configure custom JWT claim mapping
 export JWT_SSO_EMAIL_CLAIM="user_email"
 export JWT_SSO_USERNAME_CLAIM="username"
 export JWT_SSO_FIRST_NAME_CLAIM="given_name"
 export JWT_SSO_LAST_NAME_CLAIM="family_name"
 ```
 
-### Things-Factory에서 설정
-
-1. **Label Studio 설정 등록** (GraphQL)
-
-```graphql
-mutation {
-  updateLabelStudioConfig(
-    config: {
-      serverUrl: "https://label-studio.example.com"
-      apiToken: "YOUR_LABEL_STUDIO_API_TOKEN"
-      ssoEnabled: true
-      ssoTokenParam: "token"
-      active: true
-    }
-  ) {
-    id
-  }
+Then your JWT payload:
+```json
+{
+  "user_email": "user@example.com",
+  "username": "john_doe",
+  "given_name": "John",
+  "family_name": "Doe",
+  "exp": 1234567890
 }
-```
-
-2. **사용자 동기화** (GraphQL)
-
-```graphql
-mutation {
-  syncAllUsersToLabelStudio {
-    total
-    created
-    updated
-  }
-}
-```
-
-3. **Label Studio 메뉴 접근**
-   - Things-Factory에서 "Label Studio" 메뉴 클릭
-   - 자동으로 Label Studio에 로그인됨 ✅
-
----
-
-## 🔧 작동 원리
-
-```
-┌─────────────────────────────────────┐
-│     Things-Factory                  │
-│  1. JWT 토큰 발급                    │
-│  2. iframe URL 생성                 │
-│     https://ls.com?token=eyJhbGc... │
-└────────────┬────────────────────────┘
-             │
-             │ iframe with JWT token
-             ▼
-┌─────────────────────────────────────┐
-│     Label Studio                    │
-│  3. Middleware: token 추출          │
-│  4. JWT 검증 (공유 시크릿)           │
-│  5. 이메일로 User 조회              │
-│  6. 자동 로그인 ✅                   │
-└─────────────────────────────────────┘
 ```
 
 ---
 
-## 🔒 보안
+## ⚙️ Configuration Options
 
-### JWT 토큰 보안
+### Required Settings
 
-- **HTTPS 필수**: 토큰이 URL에 포함되므로 HTTPS 사용 필수
-- **짧은 유효기간**: 5-10분 권장
-- **시크릿 관리**: 환경 변수로 관리, 절대 코드에 하드코딩 금지
+| Setting | Description | Example |
+|---------|-------------|---------|
+| `JWT_SSO_SECRET` | Shared secret key for JWT verification | `"your-secret-key"` |
 
-### 시크릿 생성 (권장)
+### Optional Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `JWT_SSO_ALGORITHM` | `HS256` | JWT algorithm (HS256, HS512, RS256, etc.) |
+| `JWT_SSO_TOKEN_PARAM` | `token` | URL parameter name for JWT token |
+| `JWT_SSO_EMAIL_CLAIM` | `email` | JWT claim containing user email |
+| `JWT_SSO_USERNAME_CLAIM` | `None` | JWT claim containing username (optional) |
+| `JWT_SSO_FIRST_NAME_CLAIM` | `first_name` | JWT claim for first name |
+| `JWT_SSO_LAST_NAME_CLAIM` | `last_name` | JWT claim for last name |
+| `JWT_SSO_AUTO_CREATE_USERS` | `false` | Auto-create users if not found in Label Studio |
+
+---
+
+## 🔒 Security Best Practices
+
+### 1. Use Strong Secrets
+
+Generate a cryptographically secure secret:
 
 ```python
 import secrets
 secret = secrets.token_urlsafe(32)
-print(f"THINGS_FACTORY_JWT_SECRET={secret}")
+print(f"JWT_SSO_SECRET={secret}")
+```
+
+### 2. Use HTTPS Only
+
+JWT tokens in URLs are visible in browser history and server logs. **Always use HTTPS** in production.
+
+### 3. Short Token Expiration
+
+Use short-lived tokens (5-10 minutes recommended):
+
+```javascript
+// Good: 10 minutes
+exp: Math.floor(Date.now() / 1000) + (10 * 60)
+
+// Bad: 24 hours
+exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+```
+
+### 4. Never Hardcode Secrets
+
+Always use environment variables:
+
+```bash
+# Good
+export JWT_SSO_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+
+# Bad
+JWT_SSO_SECRET = "hardcoded-secret"  # ❌ Never do this
 ```
 
 ---
 
-## 🧪 테스트
+## 🧪 Testing
 
-### 로컬 테스트
+### Local Testing
 
 ```bash
-# 1. 환경 변수 설정
+# 1. Set environment variables
 export JWT_SSO_SECRET="test-secret-key"
+export JWT_SSO_AUTO_CREATE_USERS="true"
 
-# 2. Label Studio 실행
-python label_studio/manage.py runserver
-
-# 3. 테스트 토큰 생성
-python -c "
-import jwt
-from datetime import datetime, timedelta
-token = jwt.encode({
-    'email': 'test@example.com',
-    'first_name': 'John',
-    'last_name': 'Doe',
-    'iat': datetime.utcnow(),
-    'exp': datetime.utcnow() + timedelta(minutes=10)
-}, 'test-secret-key', algorithm='HS256')
-print(f'http://localhost:8080?token={token}')
-"
-
-# 4. 브라우저에서 URL 열기
-```
-
-### 커스텀 JWT Claim 매핑 테스트
-
-다른 JWT claim 구조를 사용하는 경우:
-
-```bash
-# 설정: user_email 필드 사용
-export JWT_SSO_EMAIL_CLAIM="user_email"
-export JWT_SSO_USERNAME_CLAIM="username"
-
-# 토큰 생성
-python -c "
-import jwt
-from datetime import datetime, timedelta
-token = jwt.encode({
-    'user_email': 'test@example.com',  # 커스텀 claim 이름
-    'username': 'testuser',
-    'iat': datetime.utcnow(),
-    'exp': datetime.utcnow() + timedelta(minutes=10)
-}, 'test-secret-key', algorithm='HS256')
-print(f'http://localhost:8080?token={token}')
-"
-```
-
-### 단위 테스트
-
-```bash
+# 2. Start Label Studio
 cd /path/to/label-studio
-python manage.py test label_studio_sso
+python manage.py runserver
+
+# 3. Generate test token
+python -c "
+import jwt
+from datetime import datetime, timedelta
+
+token = jwt.encode(
+    {
+        'email': 'test@example.com',
+        'first_name': 'Test',
+        'last_name': 'User',
+        'exp': datetime.utcnow() + timedelta(minutes=10)
+    },
+    'test-secret-key',
+    algorithm='HS256'
+)
+print(f'http://localhost:8080?token={token}')
+"
+
+# 4. Open the URL in browser
 ```
 
 ---
 
-## 📋 요구사항
+## 📋 Requirements
 
-- Python: 3.8+
-- Label Studio: 1.7.0+
-- PyJWT: 2.0+
+- **Python**: 3.8+
+- **Label Studio**: 1.7.0+
+- **Django**: 3.2+
+- **PyJWT**: 2.0+
 
 ---
 
-## 🛠️ 개발
+## 🛠️ Development
 
-### 소스 설치
+### Install from Source
 
 ```bash
-git clone https://github.com/your-org/label-studio-sso.git
+git clone https://github.com/aidoop/label-studio-sso.git
 cd label-studio-sso
 pip install -e .
 ```
 
-### 테스트 실행
+### Run Tests
 
 ```bash
 pytest tests/
 ```
 
-### 빌드
+### Build Package
 
 ```bash
 python -m build
@@ -332,37 +335,61 @@ python -m build
 
 ---
 
-## 📝 라이선스
+## 🤝 Contributing
 
-MIT License
+Issues and pull requests are welcome!
 
----
-
-## 🤝 기여
-
-이슈 및 풀 리퀘스트 환영합니다!
-
----
-
-## 🔗 관련 프로젝트
-
-- [Label Studio](https://github.com/HumanSignal/label-studio) - 오픈소스 데이터 라벨링 플랫폼
-- [Things-Factory](https://github.com/hatiolab/things-factory) - 이 패키지의 원래 통합 대상
-- [integration-label-studio](../things-factory/packages/integration-label-studio) - Things-Factory용 통합 모듈
-
-## 🌟 적용 가능한 시스템
-
-이 패키지는 다음과 같은 시스템과 통합할 수 있습니다:
-
-- ✅ Things-Factory (원래 용도)
-- ✅ 커스텀 Node.js/Express 어플리케이션
-- ✅ Django/Flask 기반 웹 포털
-- ✅ Spring Boot 기반 엔터프라이즈 시스템
-- ✅ .NET Core 웹 어플리케이션
-- ✅ 모든 JWT 발급 가능한 시스템
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## 📞 문의
+## 📝 License
 
-문제가 있으시면 [Issues](https://github.com/your-org/label-studio-sso/issues)에 등록해주세요.
+MIT License - see LICENSE file for details
+
+---
+
+## 🔗 Related Projects
+
+- [Label Studio](https://github.com/HumanSignal/label-studio) - Open source data labeling platform
+- [PyJWT](https://github.com/jpadilla/pyjwt) - JSON Web Token implementation in Python
+
+---
+
+## 💡 Use Cases
+
+This package can integrate Label Studio with:
+
+- ✅ Custom web portals (Node.js, Django, Flask, Spring Boot, .NET Core)
+- ✅ Enterprise SSO systems (Keycloak, Auth0, Okta with JWT)
+- ✅ Internal authentication services
+- ✅ Microservices architectures
+- ✅ Any system that can generate JWT tokens
+
+---
+
+## 📞 Support
+
+For issues, questions, or feature requests, please open an issue on [GitHub](https://github.com/aidoop/label-studio-sso/issues).
+
+---
+
+## 🚀 Changelog
+
+### v3.0.0 (2025-01-XX)
+- Complete refactoring to universal JWT authentication
+- Removed framework-specific implementations
+- Simplified configuration
+- Enhanced documentation
+- Production-ready status
+
+### v2.0.x
+- Session-based authentication (deprecated)
+- Framework-specific implementation (deprecated)
+
+### v1.0.x
+- Initial JWT URL parameter support

@@ -10,22 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-10-02
 
 ### Added
+
 - **Generic JWT Authentication Backend** (`JWTAuthenticationBackend`)
+
   - Configurable JWT secret, algorithm, and token parameter
   - Customizable JWT claim mapping (email, username, first_name, last_name)
   - Auto-create users option
   - User info auto-update from JWT claims
 
 - **Auto-Login Middleware** (`JWTAutoLoginMiddleware`)
+
   - Automatic user authentication from URL token parameter
   - Configurable token parameter name
   - Session management
 
 - **Backward Compatibility**
+
   - `ThingsFactoryJWTBackend` alias for Things-Factory integration
   - `ThingsFactoryAutoLoginMiddleware` alias
 
 - **Configuration Options**
+
   - `JWT_SSO_SECRET` - JWT secret key (required)
   - `JWT_SSO_ALGORITHM` - JWT algorithm (default: HS256)
   - `JWT_SSO_TOKEN_PARAM` - URL token parameter (default: token)
@@ -36,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `JWT_SSO_AUTO_CREATE_USERS` - Auto-create users (default: False)
 
 - **Documentation**
+
   - README.md - Package overview and quick start
   - CONFIGURATION.md - Detailed configuration guide with examples
   - LICENSE - MIT License
@@ -46,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test configuration with pytest
 
 ### Features
+
 - ✅ Works with any JWT-based system
 - ✅ Minimal Label Studio code modification
 - ✅ Independent pip package
@@ -53,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ Security best practices
 
 ### Supported Systems
+
 - Things-Factory (original use case)
 - Auth0, Keycloak, Okta
 - Custom Node.js/Django/Flask/Spring Boot applications
@@ -63,10 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-10-01 (Initial Design)
 
 ### Planned
+
 - Things-Factory specific JWT authentication
 - Initial proof of concept
 
 ### Changed
+
 - **2025-10-02**: Generalized from Things-Factory specific to generic JWT SSO
   - Renamed classes: `ThingsFactoryJWTBackend` → `JWTAuthenticationBackend`
   - Added configurable JWT claim mapping
@@ -78,18 +88,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Future Releases
 
 ### [1.1.0] - Planned
+
 - Support for RS256/RS512 algorithms (public/private key)
 - JWT token caching for performance
 - Custom user creation callback
 - More granular permission mapping
 
 ### [1.2.0] - Planned
+
 - Multi-tenant support
 - Token refresh mechanism
 - Admin UI for configuration
 - Metrics and monitoring hooks
 
 ### [2.0.0] - Planned (Breaking Changes)
+
 - Django 5.0 support
 - Python 3.12+ only
 - Async middleware support
@@ -124,6 +137,6 @@ AUTHENTICATION_BACKENDS = [
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/hatiolab/label-studio-sso/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/hatiolab/label-studio-sso/discussions)
+- **Issues**: [GitHub Issues](https://github.com/aidoop/label-studio-sso/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/aidoop/label-studio-sso/discussions)
 - **Documentation**: [README](./README.md) | [CONFIGURATION](./CONFIGURATION.md)
