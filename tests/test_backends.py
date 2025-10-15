@@ -11,8 +11,7 @@ import responses
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
-from label_studio_sso.backends import (JWTAuthenticationBackend,
-                                       SessionCookieAuthenticationBackend)
+from label_studio_sso.backends import JWTAuthenticationBackend, SessionCookieAuthenticationBackend
 
 User = get_user_model()
 

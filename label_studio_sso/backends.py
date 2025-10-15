@@ -13,8 +13,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.core.cache import cache
-from jwt.exceptions import (ExpiredSignatureError, InvalidSignatureError,
-                            InvalidTokenError)
+from jwt.exceptions import ExpiredSignatureError, InvalidSignatureError, InvalidTokenError
 
 logger = logging.getLogger(__name__)
 User = get_user_model()

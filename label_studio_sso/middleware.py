@@ -17,8 +17,7 @@ from django.conf import settings
 from django.contrib.auth import login
 from django.utils.deprecation import MiddlewareMixin
 
-from .backends import (JWTAuthenticationBackend,
-                       SessionCookieAuthenticationBackend)
+from .backends import JWTAuthenticationBackend, SessionCookieAuthenticationBackend
 
 logger = logging.getLogger(__name__)
 
