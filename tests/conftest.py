@@ -2,9 +2,10 @@
 Pytest configuration for label-studio-sso tests
 """
 
-import pytest
-import jwt
 from datetime import datetime, timedelta
+
+import jwt
+import pytest
 from django.conf import settings
 
 
@@ -18,10 +19,10 @@ def jwt_secret():
 def user_data():
     """Sample user data for tests"""
     return {
-        'email': 'test@example.com',
-        'username': 'testuser',
-        'first_name': 'Test',
-        'last_name': 'User',
+        "email": "test@example.com",
+        "username": "testuser",
+        "first_name": "Test",
+        "last_name": "User",
     }
 
 
@@ -30,7 +31,7 @@ def valid_jwt_token(jwt_secret, user_data):
     """Generate a valid JWT token for tests"""
     payload = {
         **user_data,
-        'iat': datetime.utcnow(),
-        'exp': datetime.utcnow() + timedelta(minutes=10)
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(minutes=10),
     }
-    return jwt.encode(payload, jwt_secret, algorithm='HS256')
+    return jwt.encode(payload, jwt_secret, algorithm="HS256")

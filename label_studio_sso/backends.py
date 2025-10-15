@@ -6,17 +6,15 @@ Configurable via Django settings for maximum flexibility.
 """
 
 import logging
-import requests
-from django.contrib.auth.backends import ModelBackend
-from django.contrib.auth import get_user_model
-from django.conf import settings
-from django.core.cache import cache
+
 import jwt
-from jwt.exceptions import (
-    InvalidTokenError,
-    ExpiredSignatureError,
-    InvalidSignatureError
-)
+import requests
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
+from django.core.cache import cache
+from jwt.exceptions import (ExpiredSignatureError, InvalidSignatureError,
+                            InvalidTokenError)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -85,14 +83,14 @@ class JWTAuthenticationBackend(ModelBackend):
         """
         # Check if this is a DRF Token authentication request - bypass to DRF
         if request:
-            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-            if auth_header.startswith('Token '):
+            auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+            if auth_header.startswith("Token "):
                 logger.debug("DRF Token detected, bypassing JWT backend")
                 return None
 
         # Extract token from URL parameter if not provided
         if not token and request:
-            token_param = getattr(settings, 'JWT_SSO_TOKEN_PARAM', 'token')
+            token_param = getattr(settings, "JWT_SSO_TOKEN_PARAM", "token")
             token = request.GET.get(token_param)
 
         if not token:
@@ -100,13 +98,13 @@ class JWTAuthenticationBackend(ModelBackend):
             return None
 
         # Get JWT configuration from settings
-        verify_native = getattr(settings, 'JWT_SSO_VERIFY_NATIVE_TOKEN', False)
-        jwt_algorithm = getattr(settings, 'JWT_SSO_ALGORITHM', 'HS256')
-        email_claim = getattr(settings, 'JWT_SSO_EMAIL_CLAIM', 'email')
-        username_claim = getattr(settings, 'JWT_SSO_USERNAME_CLAIM', None)
-        first_name_claim = getattr(settings, 'JWT_SSO_FIRST_NAME_CLAIM', 'first_name')
-        last_name_claim = getattr(settings, 'JWT_SSO_LAST_NAME_CLAIM', 'last_name')
-        auto_create = getattr(settings, 'JWT_SSO_AUTO_CREATE_USERS', False)
+        verify_native = getattr(settings, "JWT_SSO_VERIFY_NATIVE_TOKEN", False)
+        jwt_algorithm = getattr(settings, "JWT_SSO_ALGORITHM", "HS256")
+        email_claim = getattr(settings, "JWT_SSO_EMAIL_CLAIM", "email")
+        username_claim = getattr(settings, "JWT_SSO_USERNAME_CLAIM", None)
+        first_name_claim = getattr(settings, "JWT_SSO_FIRST_NAME_CLAIM", "first_name")
+        last_name_claim = getattr(settings, "JWT_SSO_LAST_NAME_CLAIM", "last_name")
+        auto_create = getattr(settings, "JWT_SSO_AUTO_CREATE_USERS", False)
 
         try:
             # Method 2: Label Studio Native JWT
@@ -115,14 +113,10 @@ class JWTAuthenticationBackend(ModelBackend):
                 print(f"[JWT Backend] Method 2: Verifying native Label Studio JWT")
 
                 # Use Label Studio's SECRET_KEY for verification
-                payload = jwt.decode(
-                    token,
-                    settings.SECRET_KEY,
-                    algorithms=['HS256']
-                )
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
                 # Get user by user_id from payload
-                user_id_claim = getattr(settings, 'JWT_SSO_NATIVE_USER_ID_CLAIM', 'user_id')
+                user_id_claim = getattr(settings, "JWT_SSO_NATIVE_USER_ID_CLAIM", "user_id")
                 user_id = payload.get(user_id_claim)
 
                 if not user_id:
@@ -143,17 +137,13 @@ class JWTAuthenticationBackend(ModelBackend):
                 logger.info("Verifying external JWT token")
                 print(f"[JWT Backend] Method 1: Verifying external JWT")
 
-                jwt_secret = getattr(settings, 'JWT_SSO_SECRET', None)
+                jwt_secret = getattr(settings, "JWT_SSO_SECRET", None)
                 if not jwt_secret:
                     logger.error("JWT_SSO_SECRET is not configured")
                     return None
 
                 # Decode and verify JWT token
-                payload = jwt.decode(
-                    token,
-                    jwt_secret,
-                    algorithms=[jwt_algorithm]
-                )
+                payload = jwt.decode(token, jwt_secret, algorithms=[jwt_algorithm])
 
             # Extract email from token
             email = payload.get(email_claim)
@@ -166,7 +156,9 @@ class JWTAuthenticationBackend(ModelBackend):
             # If no email, try to find user by username
             if not email:
                 if not username:
-                    logger.warning(f"JWT token does not contain '{email_claim}' or '{username_claim}' claim")
+                    logger.warning(
+                        f"JWT token does not contain '{email_claim}' or '{username_claim}' claim"
+                    )
                     print(f"[JWT Backend] No email or username found in token!")
                     return None
 
@@ -204,8 +196,8 @@ class JWTAuthenticationBackend(ModelBackend):
 
                 # Update user info from JWT claims if available
                 updated = False
-                first_name = payload.get(first_name_claim, '')
-                last_name = payload.get(last_name_claim, '')
+                first_name = payload.get(first_name_claim, "")
+                last_name = payload.get(last_name_claim, "")
 
                 if first_name and user.first_name != first_name:
                     user.first_name = first_name
@@ -226,8 +218,8 @@ class JWTAuthenticationBackend(ModelBackend):
                     user = User.objects.create(
                         email=email,
                         username=username,
-                        first_name=payload.get(first_name_claim, ''),
-                        last_name=payload.get(last_name_claim, '')
+                        first_name=payload.get(first_name_claim, ""),
+                        last_name=payload.get(last_name_claim, ""),
                     )
                     logger.info(f"Auto-created user: {email}")
                     return user
@@ -300,12 +292,12 @@ class SessionCookieAuthenticationBackend(ModelBackend):
             User object if authentication succeeds, None otherwise
         """
         # Get configuration
-        verify_url = getattr(settings, 'JWT_SSO_SESSION_VERIFY_URL', None)
-        verify_secret = getattr(settings, 'JWT_SSO_SESSION_VERIFY_SECRET', None)
-        cookie_name = getattr(settings, 'JWT_SSO_SESSION_COOKIE_NAME', 'sessionid')
-        timeout = getattr(settings, 'JWT_SSO_SESSION_VERIFY_TIMEOUT', 5)
-        cache_ttl = getattr(settings, 'JWT_SSO_SESSION_CACHE_TTL', 300)
-        auto_create = getattr(settings, 'JWT_SSO_SESSION_AUTO_CREATE_USERS', True)
+        verify_url = getattr(settings, "JWT_SSO_SESSION_VERIFY_URL", None)
+        verify_secret = getattr(settings, "JWT_SSO_SESSION_VERIFY_SECRET", None)
+        cookie_name = getattr(settings, "JWT_SSO_SESSION_COOKIE_NAME", "sessionid")
+        timeout = getattr(settings, "JWT_SSO_SESSION_VERIFY_TIMEOUT", 5)
+        cache_ttl = getattr(settings, "JWT_SSO_SESSION_CACHE_TTL", 300)
+        auto_create = getattr(settings, "JWT_SSO_SESSION_AUTO_CREATE_USERS", True)
 
         if not verify_url or not verify_secret:
             logger.debug("Session cookie verification not configured")
@@ -341,11 +333,11 @@ class SessionCookieAuthenticationBackend(ModelBackend):
             response = requests.post(
                 verify_url,
                 headers={
-                    'Authorization': f'Bearer {verify_secret}',
-                    'Content-Type': 'application/json'
+                    "Authorization": f"Bearer {verify_secret}",
+                    "Content-Type": "application/json",
                 },
-                json={'session_cookie': session_cookie},
-                timeout=timeout
+                json={"session_cookie": session_cookie},
+                timeout=timeout,
             )
 
             if response.status_code != 200:
@@ -355,16 +347,16 @@ class SessionCookieAuthenticationBackend(ModelBackend):
 
             data = response.json()
 
-            if not data.get('valid'):
+            if not data.get("valid"):
                 logger.warning("Session verification failed: invalid session")
                 print(f"[Session Backend] Session invalid")
                 return None
 
             # Extract user information
-            email = data.get('email')
-            username = data.get('username') or email
-            first_name = data.get('first_name', '')
-            last_name = data.get('last_name', '')
+            email = data.get("email")
+            username = data.get("username") or email
+            first_name = data.get("first_name", "")
+            last_name = data.get("last_name", "")
 
             if not email:
                 logger.warning("Session verification failed: no email in response")
@@ -400,10 +392,7 @@ class SessionCookieAuthenticationBackend(ModelBackend):
                 if auto_create:
                     # Auto-create user
                     user = User.objects.create(
-                        email=email,
-                        username=username,
-                        first_name=first_name,
-                        last_name=last_name
+                        email=email, username=username, first_name=first_name, last_name=last_name
                     )
                     logger.info(f"Auto-created user: {email}")
                     print(f"[Session Backend] Auto-created user: {email}")

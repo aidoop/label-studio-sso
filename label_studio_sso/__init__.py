@@ -11,15 +11,15 @@ Provides:
 - Simple integration with any JWT-based system
 """
 
-__version__ = '3.0.0'
-__author__ = 'Label Studio SSO Team'
-__license__ = 'MIT'
+__version__ = "3.0.0"
+__author__ = "Label Studio SSO Team"
+__license__ = "MIT"
 
-default_app_config = 'label_studio_sso.apps.LabelStudioSsoConfig'
+default_app_config = "label_studio_sso.apps.LabelStudioSsoConfig"
 
 # Do not import here - causes AppRegistryNotReady error
 # Import backends and middleware directly in settings.py instead
 __all__ = [
-    'JWTAuthenticationBackend',
-    'JWTAutoLoginMiddleware',
+    "JWTAuthenticationBackend",
+    "JWTAutoLoginMiddleware",
 ]

@@ -12,10 +12,13 @@ Supports 3 authentication methods:
 
 import logging
 import time
-from django.contrib.auth import login
+
 from django.conf import settings
+from django.contrib.auth import login
 from django.utils.deprecation import MiddlewareMixin
-from .backends import JWTAuthenticationBackend, SessionCookieAuthenticationBackend
+
+from .backends import (JWTAuthenticationBackend,
+                       SessionCookieAuthenticationBackend)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +64,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
         auth_backend = None
 
         # Priority 1: Check for JWT token (Method 1 or 2)
-        token_param = getattr(settings, 'JWT_SSO_TOKEN_PARAM', 'token')
+        token_param = getattr(settings, "JWT_SSO_TOKEN_PARAM", "token")
         token = request.GET.get(token_param)
 
         print(f"[SSO Middleware] Checking for token param '{token_param}' in URL")
@@ -69,7 +72,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
         # If no token in URL, check JWT cookie
         if not token:
-            cookie_name = getattr(settings, 'JWT_SSO_COOKIE_NAME', None)
+            cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
             if cookie_name:
                 token = request.COOKIES.get(cookie_name)
                 print(f"[SSO Middleware] Checking cookie '{cookie_name}' for JWT token")
@@ -81,19 +84,19 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
             # Attempt to authenticate with JWT token (Method 1 or 2)
             user = self.jwt_backend.authenticate(request, token=token)
-            auth_backend = 'label_studio_sso.backends.JWTAuthenticationBackend'
+            auth_backend = "label_studio_sso.backends.JWTAuthenticationBackend"
 
             print(f"[SSO Middleware] JWT authentication result: {user}")
 
         # Priority 2: Check for external session cookie (Method 3)
         if not user:
-            verify_url = getattr(settings, 'JWT_SSO_SESSION_VERIFY_URL', None)
+            verify_url = getattr(settings, "JWT_SSO_SESSION_VERIFY_URL", None)
             if verify_url:
                 logger.info("Attempting session cookie authentication")
                 print(f"[SSO Middleware] No JWT token, trying session cookie authentication")
 
                 user = self.session_backend.authenticate(request)
-                auth_backend = 'label_studio_sso.backends.SessionCookieAuthenticationBackend'
+                auth_backend = "label_studio_sso.backends.SessionCookieAuthenticationBackend"
 
                 print(f"[SSO Middleware] Session authentication result: {user}")
 
@@ -101,11 +104,13 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
         if user:
             login(request, user, backend=auth_backend)
             # Mark this session as SSO auto-login
-            request.session['jwt_auto_login'] = True
-            request.session['sso_method'] = 'jwt' if 'JWT' in auth_backend else 'session'
-            request.session['last_login'] = time.time()
+            request.session["jwt_auto_login"] = True
+            request.session["sso_method"] = "jwt" if "JWT" in auth_backend else "session"
+            request.session["last_login"] = time.time()
             logger.info(f"User auto-logged in via {request.session['sso_method']}: {user.email}")
-            print(f"[SSO Middleware] User auto-logged in via {request.session['sso_method']}: {user.email}")
+            print(
+                f"[SSO Middleware] User auto-logged in via {request.session['sso_method']}: {user.email}"
+            )
         else:
             if token or verify_url:
                 logger.warning("SSO authentication failed")
