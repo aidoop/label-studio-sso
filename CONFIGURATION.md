@@ -2,56 +2,118 @@
 
 이 문서는 다양한 환경에서 `label-studio-sso`를 설정하는 방법을 설명합니다.
 
+`label-studio-sso`는 3가지 인증 방식을 지원합니다:
+1. **외부 JWT 토큰 인증** (기본, 권장)
+2. **Label Studio 네이티브 JWT 인증** (Label Studio JWT 재사용)
+3. **외부 세션 쿠키 인증** (레거시 시스템 통합)
+
 ---
 
 ## 📋 설정 옵션
 
-### 필수 설정
+### 방식 1: 외부 JWT 토큰 인증 (기본)
+
+#### 필수 설정
 
 | 설정 변수 | 설명 | 예시 |
 |----------|------|------|
 | `JWT_SSO_SECRET` | JWT 서명 검증용 공유 시크릿 키 | `"your-secret-key-here"` |
 
-### 선택 설정
+#### 선택 설정
 
 | 설정 변수 | 기본값 | 설명 | 예시 |
 |----------|--------|------|------|
 | `JWT_SSO_ALGORITHM` | `HS256` | JWT 서명 알고리즘 | `HS256`, `HS512`, `RS256` |
 | `JWT_SSO_TOKEN_PARAM` | `token` | URL에서 토큰을 추출할 파라미터 이름 | `token`, `jwt`, `auth_token` |
+| `JWT_SSO_COOKIE_NAME` | `None` | Cookie에서 토큰을 추출할 쿠키 이름 (Reverse Proxy용) | `jwt_auth_token`, `sso_token` |
 | `JWT_SSO_EMAIL_CLAIM` | `email` | JWT에서 이메일을 추출할 claim 이름 | `email`, `user_email`, `mail` |
 | `JWT_SSO_USERNAME_CLAIM` | `None` | JWT에서 사용자명을 추출할 claim 이름 (None이면 email 사용) | `username`, `sub`, `user_id` |
 | `JWT_SSO_FIRST_NAME_CLAIM` | `first_name` | 이름 claim | `first_name`, `given_name`, `fname` |
 | `JWT_SSO_LAST_NAME_CLAIM` | `last_name` | 성 claim | `last_name`, `family_name`, `surname` |
 | `JWT_SSO_AUTO_CREATE_USERS` | `False` | 사용자가 없으면 자동 생성 | `True`, `False` |
 
+### 방식 2: Label Studio 네이티브 JWT 인증
+
+| 설정 변수 | 기본값 | 설명 | 예시 |
+|----------|--------|------|------|
+| `JWT_SSO_VERIFY_NATIVE_TOKEN` | `False` | Label Studio JWT 검증 활성화 | `True` |
+| `JWT_SSO_NATIVE_USER_ID_CLAIM` | `user_id` | 사용자 ID claim 이름 | `user_id`, `sub` |
+| `JWT_SSO_TOKEN_PARAM` | `token` | URL 파라미터 이름 | `token`, `key` |
+| `JWT_SSO_COOKIE_NAME` | `None` | Cookie 이름 (선택) | `jwt_token` |
+
+**참고**: 이 방식은 `JWT_SSO_SECRET` 대신 Label Studio의 `SECRET_KEY`를 사용합니다.
+
+### 방식 3: 외부 세션 쿠키 인증
+
+#### 필수 설정
+
+| 설정 변수 | 설명 | 예시 |
+|----------|------|------|
+| `JWT_SSO_SESSION_VERIFY_URL` | 클라이언트 API 세션 검증 엔드포인트 | `http://client-api:3000/api/auth/verify-session` |
+| `JWT_SSO_SESSION_VERIFY_SECRET` | API 인증용 공유 시크릿 | `"shared-secret-key"` |
+
+#### 선택 설정
+
+| 설정 변수 | 기본값 | 설명 | 예시 |
+|----------|--------|------|------|
+| `JWT_SSO_SESSION_COOKIE_NAME` | `sessionid` | 세션 쿠키 이름 | `sessionid`, `connect.sid` |
+| `JWT_SSO_SESSION_VERIFY_TIMEOUT` | `5` | API 요청 타임아웃 (초) | `5`, `10` |
+| `JWT_SSO_SESSION_CACHE_TTL` | `300` | 세션 검증 캐시 TTL (초) | `300`, `600` |
+| `JWT_SSO_SESSION_AUTO_CREATE_USERS` | `True` | 사용자 자동 생성 | `True`, `False` |
+
 ---
 
 ## 🎯 사용 사례별 설정
 
-### 1. Things-Factory 통합
+### 방식 1: 외부 JWT 토큰 인증
+
+#### 사례 1-1: Client Application 통합 (Reverse Proxy 방식)
 
 **JWT 토큰 구조**:
 ```json
 {
   "email": "user@example.com",
-  "name": "John Doe",
+  "username": "user@example.com",
   "iat": 1234567890,
   "exp": 1234567900
 }
 ```
 
-**Label Studio 설정**:
+**Label Studio 설정** (Cookie 기반):
 ```python
 # settings.py
-JWT_SSO_SECRET = os.getenv('THINGS_FACTORY_JWT_SECRET')
+JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')  # Client Application와 동일한 시크릿
 JWT_SSO_ALGORITHM = 'HS256'
+JWT_SSO_COOKIE_NAME = 'jwt_auth_token'  # Cookie 인증 활성화
 JWT_SSO_EMAIL_CLAIM = 'email'
-JWT_SSO_AUTO_CREATE_USERS = False  # Things-Factory에서 사용자 동기화 사용
+JWT_SSO_USERNAME_CLAIM = 'username'
+JWT_SSO_AUTO_CREATE_USERS = False  # Client Application에서 사용자 동기화 사용
+```
+
+**Label Studio 설정** (URL 파라미터 방식):
+```python
+# settings.py
+JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')
+JWT_SSO_ALGORITHM = 'HS256'
+JWT_SSO_TOKEN_PARAM = 'token'  # URL 파라미터 인증
+JWT_SSO_EMAIL_CLAIM = 'email'
+JWT_SSO_AUTO_CREATE_USERS = False
+```
+
+**Label Studio 설정** (하이브리드 방식 - 권장):
+```python
+# settings.py
+JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')
+JWT_SSO_ALGORITHM = 'HS256'
+JWT_SSO_TOKEN_PARAM = 'token'          # URL 우선
+JWT_SSO_COOKIE_NAME = 'jwt_auth_token' # Cookie 폴백
+JWT_SSO_EMAIL_CLAIM = 'email'
+JWT_SSO_AUTO_CREATE_USERS = False
 ```
 
 ---
 
-### 2. Auth0 통합
+#### 사례 1-2: Auth0 통합
 
 **JWT 토큰 구조**:
 ```json
@@ -79,7 +141,7 @@ JWT_SSO_AUTO_CREATE_USERS = True  # Auth0에서 자동 생성
 
 ---
 
-### 3. Keycloak 통합
+#### 사례 1-3: Keycloak 통합
 
 **JWT 토큰 구조**:
 ```json
@@ -107,7 +169,7 @@ JWT_SSO_AUTO_CREATE_USERS = True
 
 ---
 
-### 4. 커스텀 시스템 통합
+#### 사례 1-4: 커스텀 시스템 통합
 
 **JWT 토큰 구조** (예시):
 ```json
@@ -129,6 +191,160 @@ JWT_SSO_EMAIL_CLAIM = 'user_email'
 JWT_SSO_USERNAME_CLAIM = 'username'
 JWT_SSO_FIRST_NAME_CLAIM = 'full_name'  # full_name을 first_name에 매핑
 JWT_SSO_AUTO_CREATE_USERS = True
+```
+
+---
+
+### 방식 2: Label Studio 네이티브 JWT 인증
+
+#### 사례 2-1: Label Studio JWT 재사용
+
+클라이언트가 Label Studio API를 통해 JWT 토큰을 받아 iframe에서 재사용하는 경우.
+
+**Label Studio 설정**:
+```python
+# settings.py
+JWT_SSO_VERIFY_NATIVE_TOKEN = True
+JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
+JWT_SSO_TOKEN_PARAM = 'token'
+```
+
+**클라이언트 구현**:
+```javascript
+// 1. Label Studio API에서 JWT 받기
+const response = await fetch('http://labelstudio.example.com/api/current-user/token', {
+  headers: {
+    'Authorization': `Token ${ADMIN_API_KEY}`
+  }
+});
+const { token } = await response.json();
+
+// 2. iframe으로 Label Studio 열기
+const iframe = document.createElement('iframe');
+iframe.src = `http://labelstudio.example.com?token=${token}`;
+document.body.appendChild(iframe);
+```
+
+**장점**:
+- 별도 JWT 시크릿 관리 불필요
+- Label Studio 기존 인증 체계 재사용
+
+---
+
+### 방식 3: 외부 세션 쿠키 인증
+
+#### 사례 3-1: 레거시 Django 시스템 통합
+
+기존 Django 시스템의 세션 쿠키를 Label Studio에서도 사용하는 경우.
+
+**Label Studio 설정**:
+```python
+# settings.py
+JWT_SSO_SESSION_VERIFY_URL = 'http://legacy-system:3000/api/auth/verify-session'
+JWT_SSO_SESSION_VERIFY_SECRET = os.getenv('SESSION_VERIFY_SECRET')
+JWT_SSO_SESSION_COOKIE_NAME = 'sessionid'  # Django 기본 세션 쿠키
+JWT_SSO_SESSION_VERIFY_TIMEOUT = 5
+JWT_SSO_SESSION_CACHE_TTL = 300  # 5분 캐시
+JWT_SSO_SESSION_AUTO_CREATE_USERS = True
+
+# 서브도메인 쿠키 공유 설정
+SESSION_COOKIE_DOMAIN = '.example.com'  # 점(.) 필수!
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_DOMAIN = '.example.com'
+
+# CORS 설정
+CORS_ALLOWED_ORIGINS = ['http://app.example.com']
+CORS_ALLOW_CREDENTIALS = True
+```
+
+**클라이언트 API 구현** (`/api/auth/verify-session`):
+```javascript
+// Node.js + Express 예시
+app.post('/api/auth/verify-session', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const secret = process.env.SESSION_VERIFY_SECRET;
+
+  // 1. 공유 시크릿 검증
+  if (authHeader !== `Bearer ${secret}`) {
+    return res.status(401).json({ valid: false });
+  }
+
+  // 2. 세션 쿠키 추출
+  const sessionCookie = req.body.session_cookie;
+
+  // 3. 세션 검증 (Redis, DB 등)
+  const session = await getSessionFromStore(sessionCookie);
+
+  if (!session || !session.user) {
+    return res.json({ valid: false });
+  }
+
+  // 4. 사용자 정보 반환
+  res.json({
+    valid: true,
+    email: session.user.email,
+    username: session.user.username,
+    first_name: session.user.firstName,
+    last_name: session.user.lastName
+  });
+});
+```
+
+**장점**:
+- JWT 토큰 생성 불필요
+- 기존 세션 관리 체계 재사용
+- 실시간 세션 유효성 검증
+
+**제약사항**:
+- 클라이언트 API 구현 필요
+- 서브도메인 환경 필요 (같은 루트 도메인)
+- 또는 Reverse Proxy로 쿠키 전달 필요
+
+---
+
+#### 사례 3-2: Node.js Express 세션 통합
+
+**Label Studio 설정**:
+```python
+# settings.py
+JWT_SSO_SESSION_VERIFY_URL = 'http://nodejs-app:4000/api/verify'
+JWT_SSO_SESSION_VERIFY_SECRET = os.getenv('SESSION_SECRET')
+JWT_SSO_SESSION_COOKIE_NAME = 'connect.sid'  # Express 기본 쿠키
+JWT_SSO_SESSION_AUTO_CREATE_USERS = True
+
+SESSION_COOKIE_DOMAIN = '.company.com'
+```
+
+**Node.js API**:
+```javascript
+const session = require('express-session');
+const RedisStore = require('connect-redis')(session);
+
+app.use(session({
+  store: new RedisStore({ client: redisClient }),
+  secret: process.env.SESSION_SECRET,
+  name: 'connect.sid',
+  cookie: { domain: '.company.com' }  // 서브도메인 공유
+}));
+
+app.post('/api/verify', async (req, res) => {
+  // 세션 검증 로직
+  const sessionId = req.body.session_cookie;
+  const sessionData = await redisClient.get(`sess:${sessionId}`);
+
+  if (!sessionData) {
+    return res.json({ valid: false });
+  }
+
+  const session = JSON.parse(sessionData);
+  res.json({
+    valid: true,
+    email: session.user.email,
+    username: session.user.username,
+    first_name: session.user.firstName,
+    last_name: session.user.lastName
+  });
+});
 ```
 
 ---

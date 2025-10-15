@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Backward Compatibility**
 
-  - `ThingsFactoryJWTBackend` alias for Things-Factory integration
-  - `ThingsFactoryAutoLoginMiddleware` alias
+  - `ClientApplicationJWTBackend` alias for Client Application integration
+  - `ClientApplicationAutoLoginMiddleware` alias
 
 - **Configuration Options**
 
@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Supported Systems
 
-- Things-Factory (original use case)
+- Client Application (original use case)
 - Auth0, Keycloak, Okta
 - Custom Node.js/Django/Flask/Spring Boot applications
 - Any system that can issue JWT tokens
@@ -72,16 +72,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Things-Factory specific JWT authentication
+- Client Application specific JWT authentication
 - Initial proof of concept
 
 ### Changed
 
-- **2025-10-02**: Generalized from Things-Factory specific to generic JWT SSO
-  - Renamed classes: `ThingsFactoryJWTBackend` → `JWTAuthenticationBackend`
+- **2025-10-02**: Generalized from Client Application specific to generic JWT SSO
+  - Renamed classes: `ClientApplicationJWTBackend` → `JWTAuthenticationBackend`
   - Added configurable JWT claim mapping
   - Added auto-create users feature
-  - Made backward compatible with Things-Factory
+  - Made backward compatible with Client Application
 
 ---
 
@@ -112,14 +112,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guides
 
-### From Things-Factory Custom Implementation
+### From Client Application Custom Implementation
 
-If you have a custom Things-Factory JWT authentication:
+If you have a custom Client Application JWT authentication:
 
 ```python
 # Old (custom implementation)
 AUTHENTICATION_BACKENDS = [
-    'your_app.backends.ThingsFactoryAuthenticationBackend',
+    'your_app.backends.ClientApplicationAuthenticationBackend',
 ]
 
 # New (label-studio-sso package)
@@ -129,7 +129,7 @@ AUTHENTICATION_BACKENDS = [
 
 # Or use backward compatible alias
 AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.ThingsFactoryJWTBackend',
+    'label_studio_sso.backends.ClientApplicationJWTBackend',
 ]
 ```
 

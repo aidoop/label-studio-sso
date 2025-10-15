@@ -107,6 +107,7 @@ class TestIntegration:
         backend = JWTAuthenticationBackend()
 
         with patch('label_studio_sso.backends.settings') as mock_settings:
+            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
             mock_settings.JWT_SSO_SECRET = jwt_secret
             mock_settings.JWT_SSO_ALGORITHM = 'HS256'
             mock_settings.JWT_SSO_EMAIL_CLAIM = 'email'
