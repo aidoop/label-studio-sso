@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="label-studio-sso",
-    version="4.0.0",
+    version="4.0.1",
     author="AIdoop Team",
     author_email="admin@aidoop.com",
     description="Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system",
@@ -39,6 +39,7 @@ setup(
     install_requires=[
         "Django>=3.2",
         "PyJWT>=2.0.0",
+        "requests>=2.25.0",
     ],
     extras_require={
         "dev": [
