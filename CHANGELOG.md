@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [6.0.1] - 2025-10-16
+
+### Documentation
+
+- **Added Label Studio OSS compatibility notice**
+  - Added "Label Studio OSS Only" badge to README
+  - Added edition compatibility table (OSS vs Enterprise)
+  - Clarified that this package is for Label Studio Open Source only
+  - Added notice that Enterprise users should use built-in SAML/LDAP/OAuth features
+  - Updated package description to include "OSS"
+  - Added keywords: "label-studio-oss", "open-source", "oss"
+  - Added important notice in CHANGELOG v6.0.0 section
+
+### Changed
+
+- Updated package description from "Native JWT authentication for Label Studio" to "Native JWT authentication for Label Studio OSS"
+- Enhanced README Overview section with Edition Compatibility table
+- Added "When to Use This Package" guide
+- Improved keywords for better discoverability
+
+---
+
 ## [6.0.0] - 2025-10-16
+
+### 📌 Important Notice
+
+**This package is for Label Studio OSS (Open Source) only!**
+- ✅ **Use this package**: If you're using Label Studio Open Source
+- ❌ **Don't use this package**: If you're using Label Studio Enterprise
+  - Enterprise has built-in SAML/LDAP/OAuth SSO features
+  - See: https://labelstud.io/guide/auth_setup.html
 
 ### Breaking Changes
 

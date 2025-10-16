@@ -9,10 +9,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="label-studio-sso",
-    version="6.0.0",
+    version="6.0.1",
     author="AIdoop Team",
     author_email="admin@aidoop.com",
-    description="Native JWT authentication for Label Studio - simple and secure SSO integration",
+    description="Native JWT authentication for Label Studio OSS - simple and secure SSO integration",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/aidoop/label-studio-sso",
@@ -49,7 +49,7 @@ setup(
             "flake8>=4.0",
         ],
     },
-    keywords="label-studio sso jwt authentication single-sign-on",
+    keywords="label-studio label-studio-oss sso jwt authentication single-sign-on open-source oss",
     project_urls={
         "Bug Reports": "https://github.com/aidoop/label-studio-sso/issues",
         "Source": "https://github.com/aidoop/label-studio-sso",

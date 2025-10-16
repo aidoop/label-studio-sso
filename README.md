@@ -5,17 +5,42 @@ Native JWT authentication plugin for Label Studio enabling seamless SSO integrat
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Version: 6.0.0](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Version: 6.0.1](https://img.shields.io/badge/version-6.0.1-blue.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
+[![Label Studio: OSS Only](https://img.shields.io/badge/Label%20Studio-OSS%20Only-orange.svg)](https://github.com/HumanSignal/label-studio)
 
 > **⚠️ Breaking Changes in v6.0.0**: Method 1 (External JWT) has been removed. See [Migration Guide](./MIGRATION_GUIDE_v6.md) for upgrade instructions.
+
+> **📌 For Label Studio OSS Only**: This package is designed for **Label Studio Open Source** edition. If you're using **Label Studio Enterprise**, use the built-in SAML/LDAP/OAuth SSO features instead.
 
 ---
 
 ## 🎯 Overview
 
-This package provides JWT-based authentication integration for **Label Studio**, enabling seamless SSO from external applications.
+This package provides JWT-based authentication integration for **Label Studio Open Source (OSS)**, enabling seamless SSO from external applications.
+
+### 📊 Label Studio Edition Compatibility
+
+| Edition | SSO Support | Use This Package? |
+|---------|-------------|-------------------|
+| **Label Studio OSS** | ❌ No built-in SSO | ✅ **YES** - Use this package |
+| **Label Studio Enterprise** | ✅ Built-in SAML/LDAP/OAuth | ❌ **NO** - Use built-in features |
+
+### When to Use This Package
+
+**✅ Use label-studio-sso if:**
+- You're using Label Studio **Open Source** (free version)
+- You want to embed Label Studio in your application
+- You need JWT-based authentication integration
+- You want users to auto-login without separate credentials
+
+**❌ Don't use this package if:**
+- You're using **Label Studio Enterprise** (commercial version)
+  - Enterprise has built-in SAML, LDAP, and OAuth SSO
+  - Use those instead: [Label Studio Enterprise SSO Docs](https://labelstud.io/guide/auth_setup.html)
+- You need traditional Single Sign-On across multiple services
+  - Consider SAML, OAuth, or OpenID Connect instead
 
 > **📌 About "SSO"**: This package provides **authentication integration** between external systems and Label Studio, commonly referred to as "SSO integration" in the industry. While not traditional Single Sign-On (one login → all services), it enables seamless authentication where users don't need to login separately to Label Studio. See [Understanding SSO](#-understanding-sso) for details.
 
