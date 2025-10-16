@@ -7,5 +7,5 @@ from django.urls import path
 from .views import issue_sso_token
 
 urlpatterns = [
-    path("api/sso/token", issue_sso_token, name="sso_token"),
+    path("token", issue_sso_token, name="sso_token"),
 ]

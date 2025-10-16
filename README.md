@@ -5,7 +5,7 @@ Native JWT authentication plugin for Label Studio enabling seamless SSO integrat
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Version: 6.0.3](https://img.shields.io/badge/version-6.0.3-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Version: 6.0.7](https://img.shields.io/badge/version-6.0.7-blue.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
 [![Label Studio: OSS Only](https://img.shields.io/badge/Label%20Studio-OSS%20Only-orange.svg)](https://github.com/HumanSignal/label-studio)
@@ -148,11 +148,16 @@ MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 # JWT SSO Configuration
 JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'  # Claim containing user ID
 JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # Cookie-based (recommended)
+JWT_SSO_COOKIE_PATH = '/'  # Cookie path (default: '/')
 JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (fallback)
 
 # API Configuration
 SSO_TOKEN_EXPIRY = 600  # 10 minutes
 SSO_AUTO_CREATE_USERS = True  # Auto-create users from API requests
+
+# Important: If using reverse proxy, ensure cookies work across all paths
+# CSRF_COOKIE_PATH = '/'  # Default is '/', do not change to '/label-studio'
+# SESSION_COOKIE_PATH = '/'  # Default is '/', do not change to '/label-studio'
 ```
 
 **Step 2: Add URL Patterns**
@@ -243,7 +248,7 @@ res.cookie('ls_auth_token', token, {
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
-  path: '/label-studio',
+  path: '/',
   maxAge: expires_in * 1000
 });
 
@@ -319,7 +324,7 @@ res.cookie('ls_auth_token', token, {
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
-  path: '/label-studio',
+  path: '/',
   maxAge: expires_in * 1000
 });
 
@@ -354,7 +359,7 @@ response.set_cookie(
     httponly=True,
     secure=True,
     samesite='Strict',
-    path='/label-studio',
+    path='/',
     max_age=expires_in
 )
 return response
@@ -386,7 +391,7 @@ app.use('/label-studio', async (ctx, next) => {
 
     // Set JWT cookie
     ctx.cookies.set('ls_auth_token', response.data.token, {
-      path: '/label-studio',
+      path: '/',
       httpOnly: true,
       secure: true,
       sameSite: 'Lax',
@@ -410,6 +415,7 @@ app.use('/label-studio', async (ctx, next) => {
 | `JWT_SSO_NATIVE_USER_ID_CLAIM` | `user_id` | JWT claim containing user ID |
 | `JWT_SSO_TOKEN_PARAM` | `token` | URL parameter name for JWT token |
 | `JWT_SSO_COOKIE_NAME` | `None` | Cookie name for JWT token (recommended) |
+| `JWT_SSO_COOKIE_PATH` | `/` | Cookie path - use `/` for all paths, not `/label-studio` |
 
 ### API Settings
 

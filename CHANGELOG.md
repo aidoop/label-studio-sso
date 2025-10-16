@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [6.0.7] - 2025-10-17
+
+### Fixed
+
+- **Cookie path configuration for reverse proxy scenarios**
+  - Changed default `JWT_SSO_COOKIE_PATH` from `/label-studio` to `/`
+  - Fixed cookie deletion path in middleware to match cookie setting path
+  - Updated all documentation examples to use `path: '/'` instead of `path: '/label-studio'`
+
+### Why This Matters
+
+When Label Studio is accessed through a reverse proxy (e.g., Things Factory at `/label-studio/*`), Label Studio itself runs at the root path `/` internally. The frontend makes API calls to paths like `/api/*`, `/static/*`, etc.
+
+**Problem**: If cookies are set with `path: '/label-studio'`, they won't be sent with Label Studio's internal API requests to `/api/*`, causing authentication failures.
+
+**Solution**: Use `path: '/'` to ensure cookies are sent with all Label Studio requests, regardless of the external proxy path.
+
+This applies to:
+- JWT SSO authentication cookies (`ls_auth_token`)
+- CSRF protection cookies (`csrftoken`)
+- Django session cookies (`sessionid`)
+
+### Configuration Impact
+
+If you're using a reverse proxy setup, update your cookie configuration:
+
+```python
+# Label Studio settings.py
+JWT_SSO_COOKIE_PATH = '/'  # Changed from '/label-studio'
+CSRF_COOKIE_PATH = '/'  # Should be '/', not '/label-studio'
+SESSION_COOKIE_PATH = '/'  # Should be '/', not '/label-studio'
+```
+
+```javascript
+// External application (Node.js/Express)
+res.cookie('ls_auth_token', token, {
+  path: '/',  // Changed from '/label-studio'
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax'
+})
+```
+
+---
+
 ## [6.0.3] - 2025-10-16
 
 ### Removed
@@ -272,7 +317,7 @@ const { token } = response.data
 ctx.cookies.set('ls_auth_token', token, {
   httpOnly: true,
   secure: true,
-  path: '/label-studio'
+  path: '/'
 })
 ```
 

@@ -124,7 +124,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
             if cookie_name:
                 # Delete expired token cookie
                 response.delete_cookie(
-                    cookie_name, path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/label-studio")
+                    cookie_name, path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/")
                 )
                 logger.info(f"Deleted expired JWT token cookie: {cookie_name}")
                 print(f"[SSO Middleware] Deleted expired token cookie: {cookie_name}")

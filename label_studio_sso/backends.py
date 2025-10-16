@@ -35,7 +35,7 @@ class JWTAuthenticationBackend(ModelBackend):
         JWT_SSO_COOKIE_NAME = 'ls_auth_token'
     """
 
-    def authenticate(self, request, token=None, **kwargs):
+    def authenticate(self, request, token=None, **kwargs):  # noqa: C901
         """
         Authenticate user using Label Studio native JWT token.
 
@@ -67,23 +67,35 @@ class JWTAuthenticationBackend(ModelBackend):
             print("[JWT Backend] Verifying native Label Studio JWT")
 
             # Use Label Studio's SECRET_KEY for verification
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            # Disable audience verification - not needed for Label Studio native tokens
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=["HS256"], options={"verify_aud": False}
+            )
+
+            print("[JWT Backend] Token decoded successfully")
+            print(f"[JWT Backend] Payload: {payload}")
 
             # Get user by user_id from payload
             user_id_claim = getattr(settings, "JWT_SSO_NATIVE_USER_ID_CLAIM", "user_id")
             user_id = payload.get(user_id_claim)
 
+            print(f"[JWT Backend] Looking for claim '{user_id_claim}' in payload")
+            print(f"[JWT Backend] Extracted user_id: {user_id}")
+
             if not user_id:
                 logger.warning(f"Native JWT token does not contain '{user_id_claim}' claim")
+                print("[JWT Backend] ERROR: No user_id in token")
                 return None
 
             try:
+                print(f"[JWT Backend] Searching for user with ID: {user_id}")
                 user = User.objects.get(pk=user_id)
                 logger.info("User authenticated via native JWT: %s", user.email)
                 print(f"[JWT Backend] Native JWT auth successful: {user.email}")
                 return user
             except User.DoesNotExist:
                 logger.warning(f"User with ID {user_id} not found")
+                print(f"[JWT Backend] ERROR: User with ID {user_id} not found in database")
                 return None
 
         except ExpiredSignatureError:
