@@ -5,7 +5,7 @@ Universal authentication plugin for Label Studio supporting multiple SSO methods
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Version: 3.0.0](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Version: 5.0.0](https://img.shields.io/badge/version-5.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
 
@@ -19,10 +19,10 @@ This package provides flexible authentication backends for **Label Studio** that
 
 ### 2 Authentication Methods
 
-| Method | Description | Use Case |
-|--------|-------------|----------|
-| **Method 1: External JWT** | Client generates JWT with shared secret | Independent systems, Auth0, Keycloak |
-| **Method 2: Native JWT (Recommended)** | Label Studio issues JWT tokens via API | All integrations, simplest and most secure |
+| Method | Description | Use Case | Recommended |
+|--------|-------------|----------|-------------|
+| **Method 1: External JWT** | Client generates JWT with shared secret | Independent systems, Auth0, Keycloak | |
+| **Method 2: Native JWT** | Label Studio issues JWT tokens via API | All integrations, simplest and most secure | ⭐ Yes |
 
 ### Key Features
 
@@ -52,9 +52,9 @@ pip install label-studio-sso
 
 Choose the authentication method that best fits your use case:
 
-### Method 1: External JWT (Recommended)
+### Method 1: External JWT
 
-**Use when**: You have an independent authentication system (Node.js, Python, Auth0, Keycloak, etc.)
+**Use when**: You have an independent authentication system that can generate JWT tokens (Node.js, Python, Auth0, Keycloak, etc.)
 
 **1. Configure Label Studio**:
 
@@ -116,9 +116,9 @@ iframe.src = 'http://labelstudio.example.com/';  // Clean URL!
 
 ---
 
-### Method 2: Label Studio Issues JWT (Recommended for iframe integration)
+### Method 2: Label Studio Issues JWT (Recommended)
 
-**Use when**: You want Label Studio to issue its own JWT tokens - most secure for same-origin setups
+**Use when**: You want Label Studio to issue its own JWT tokens - simplest and most secure approach
 
 **1. Configure Label Studio**:
 
