@@ -40,10 +40,57 @@ This package provides flexible authentication backends for **Label Studio** that
 
 ## 📦 Installation
 
-### 1. Install via pip
+### 1. Install the package
 
 ```bash
 pip install label-studio-sso
+```
+
+### 2. Configure Label Studio
+
+#### Option A: Source Installation (Recommended for Development)
+
+If you installed Label Studio from source:
+
+```bash
+# 1. Find your Label Studio installation
+cd /path/to/label-studio
+
+# 2. Install label-studio-sso in the same environment
+pip install label-studio-sso
+
+# 3. Edit settings file
+# File: label_studio/core/settings/label_studio.py
+```
+
+#### Option B: Docker Installation
+
+If you're using Label Studio Docker:
+
+```bash
+# 1. Create a custom Dockerfile
+FROM heartexlabs/label-studio:latest
+
+# Install label-studio-sso
+RUN pip install label-studio-sso
+
+# 2. Create custom settings file
+# Mount settings at runtime or build into image
+```
+
+#### Option C: Pip Installation
+
+If you installed Label Studio via pip:
+
+```bash
+# 1. Find Label Studio settings location
+python -c "import label_studio; print(label_studio.__file__)"
+# Output example: /usr/local/lib/python3.9/site-packages/label_studio/__init__.py
+
+# 2. Navigate to settings directory
+cd /usr/local/lib/python3.9/site-packages/label_studio/core/settings/
+
+# 3. Edit label_studio.py
 ```
 
 ---
@@ -56,18 +103,25 @@ Choose the authentication method that best fits your use case:
 
 **Use when**: You have an independent authentication system that can generate JWT tokens (Node.js, Python, Auth0, Keycloak, etc.)
 
-**1. Configure Label Studio**:
+**Step 1: Edit Label Studio Settings**
+
+Edit `label_studio/core/settings/label_studio.py` and add the following:
 
 ```python
-# label_studio/core/settings/label_studio.py
+# File: label_studio/core/settings/label_studio.py
+import os
 
+# Add to INSTALLED_APPS (find existing INSTALLED_APPS list and add this)
 INSTALLED_APPS += ['label_studio_sso']
 
+# Add to AUTHENTICATION_BACKENDS (must be BEFORE existing backends)
 AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.JWTAuthenticationBackend',  # Add first
-    # ... other backends ...
+    'label_studio_sso.backends.JWTAuthenticationBackend',  # Add this FIRST
+    'django.contrib.auth.backends.ModelBackend',  # Existing default backend
+    # ... other existing backends ...
 ]
 
+# Add to MIDDLEWARE (append at the end)
 MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 
 # Method 1 Configuration
@@ -82,7 +136,39 @@ JWT_SSO_COOKIE_PATH = '/label-studio'  # Optional, default path
 JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (for backward compatibility)
 
 JWT_SSO_EMAIL_CLAIM = 'email'
-JWT_SSO_AUTO_CREATE_USERS = False  # or True
+JWT_SSO_AUTO_CREATE_USERS = False  # Set to True to auto-create users
+```
+
+**Step 2: Set Environment Variables**
+
+```bash
+# Required
+export JWT_SSO_SECRET="your-secret-key-min-32-chars"
+
+# Generate a secure secret:
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+**Step 3: Restart Label Studio**
+
+```bash
+# If running via source
+python label_studio/manage.py runserver
+
+# If running via systemd
+sudo systemctl restart label-studio
+
+# If running via Docker
+docker-compose restart
+```
+
+**Step 4: Verify Configuration**
+
+```bash
+# Check if module is loaded
+python label_studio/manage.py shell
+>>> from label_studio_sso.backends import JWTAuthenticationBackend
+>>> print("✅ label-studio-sso is installed correctly")
 ```
 
 **2. Generate JWT in your client**:
@@ -120,32 +206,98 @@ iframe.src = 'http://labelstudio.example.com/';  // Clean URL!
 
 **Use when**: You want Label Studio to issue its own JWT tokens - simplest and most secure approach
 
-**1. Configure Label Studio**:
+**Step 1: Edit Label Studio Settings**
+
+Edit `label_studio/core/settings/label_studio.py`:
 
 ```python
-# label_studio/core/settings/label_studio.py
+# File: label_studio/core/settings/label_studio.py
+import os
 
-INSTALLED_APPS += ['label_studio_sso']
-AUTHENTICATION_BACKENDS = ['label_studio_sso.backends.JWTAuthenticationBackend', ...]
-MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
-
-# Add URL patterns
-from django.urls import path, include
-urlpatterns += [
-    path('', include('label_studio_sso.urls')),
+# Add to INSTALLED_APPS
+INSTALLED_APPS += [
+    'label_studio_sso',
+    'rest_framework',  # Required for API
+    'rest_framework.authtoken',  # Required for Token authentication
 ]
+
+# Add to AUTHENTICATION_BACKENDS (must be BEFORE existing backends)
+AUTHENTICATION_BACKENDS = [
+    'label_studio_sso.backends.JWTAuthenticationBackend',  # Add this FIRST
+    'django.contrib.auth.backends.ModelBackend',
+    # ... other existing backends ...
+]
+
+# Add to MIDDLEWARE (append at the end)
+MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 
 # Method 2 Configuration
 JWT_SSO_VERIFY_NATIVE_TOKEN = True  # Use Label Studio's own SECRET_KEY
 JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
 JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # Cookie-based (recommended)
 
-# API Configuration (Method 2)
+# API Configuration
 SSO_TOKEN_EXPIRY = 600  # 10 minutes
-SSO_AUTO_CREATE_USERS = True  # Auto-create users
+SSO_AUTO_CREATE_USERS = True  # Auto-create users from API requests
+```
 
-# Django REST Framework (required for Token authentication)
-INSTALLED_APPS += ['rest_framework', 'rest_framework.authtoken']
+**Step 2: Add URL Patterns**
+
+Edit `label_studio/core/urls.py` (or your main urls.py):
+
+```python
+# File: label_studio/core/urls.py
+from django.urls import path, include
+
+urlpatterns = [
+    # ... existing patterns ...
+    path('api/sso/', include('label_studio_sso.urls')),  # Add this line
+]
+```
+
+**Step 3: Run Migrations (if needed)**
+
+```bash
+# Create database tables for rest_framework.authtoken
+python label_studio/manage.py migrate
+```
+
+**Step 4: Create API Token for SSO**
+
+```bash
+# Option 1: Via Django admin
+# 1. Login to Label Studio as admin
+# 2. Go to Account Settings → Access Token
+# 3. Copy the token
+
+# Option 2: Via command line
+python label_studio/manage.py drf_create_token <admin_username>
+```
+
+**Step 5: Restart Label Studio**
+
+```bash
+# If running via source
+python label_studio/manage.py runserver
+
+# If running via systemd
+sudo systemctl restart label-studio
+
+# If running via Docker
+docker-compose restart
+```
+
+**Step 6: Verify Configuration**
+
+```bash
+# Test the SSO API endpoint
+curl -X POST http://localhost:8080/api/sso/token \
+  -H "Authorization: Token <your-label-studio-api-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}'
+
+# Expected response:
+# {"token": "eyJhbGc...", "expires_in": 600}
 ```
 
 **2. Client requests JWT from Label Studio API**:
@@ -441,6 +593,165 @@ export JWT_SSO_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(
 
 # Bad
 JWT_SSO_SECRET = "hardcoded-secret"  # ❌ Never do this
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. "Module label_studio_sso not found"
+
+**Problem**: Label Studio can't find the installed package.
+
+**Solution**:
+```bash
+# Verify installation in the correct environment
+pip list | grep label-studio-sso
+
+# If not found, install it
+pip install label-studio-sso
+
+# Check Python environment matches Label Studio
+which python
+# Should match the Python used to run Label Studio
+```
+
+#### 2. "Authentication failed - No JWT token provided"
+
+**Problem**: Token not being passed to Label Studio.
+
+**Solution**:
+```bash
+# Check if token is in URL
+echo "URL: http://labelstudio.example.com?token=YOUR_TOKEN"
+
+# Check if cookie is being set
+# In browser DevTools → Application → Cookies
+# Look for 'ls_auth_token' cookie
+
+# Verify middleware is enabled
+python manage.py shell
+>>> from django.conf import settings
+>>> print('label_studio_sso.middleware.JWTAutoLoginMiddleware' in settings.MIDDLEWARE)
+True
+```
+
+#### 3. "Invalid JWT signature"
+
+**Problem**: Secret key mismatch between client and Label Studio.
+
+**Solution**:
+```bash
+# Verify JWT_SSO_SECRET matches on both sides
+# Client side:
+echo $JWT_SSO_SECRET
+
+# Label Studio side:
+python manage.py shell
+>>> from django.conf import settings
+>>> print(settings.JWT_SSO_SECRET)
+
+# They must match exactly!
+```
+
+#### 4. "User not found in Label Studio"
+
+**Problem**: JWT is valid but user doesn't exist.
+
+**Solution**:
+```python
+# Option 1: Enable auto-create users
+JWT_SSO_AUTO_CREATE_USERS = True
+
+# Option 2: Manually create user in Label Studio
+python manage.py createsuperuser
+# Enter email matching JWT claim
+```
+
+#### 5. "CSRF verification failed"
+
+**Problem**: Django CSRF protection blocking requests.
+
+**Solution**:
+```python
+# Add to settings for SSO endpoints
+CSRF_TRUSTED_ORIGINS = [
+    'https://your-app.example.com',
+]
+
+# Or for cookie-based auth, ensure SameSite is set correctly
+JWT_SSO_COOKIE_SAMESITE = 'Lax'  # or 'None' for cross-site
+```
+
+#### 6. "API endpoint /api/sso/token returns 404"
+
+**Problem**: URL patterns not configured for Method 2.
+
+**Solution**:
+```python
+# Check urls.py includes label_studio_sso.urls
+from django.urls import path, include
+
+urlpatterns = [
+    path('api/sso/', include('label_studio_sso.urls')),  # Add this
+]
+
+# Restart Label Studio
+# Test endpoint:
+curl http://localhost:8080/api/sso/token
+```
+
+#### 7. "Token expired" errors
+
+**Problem**: JWT token has expired.
+
+**Solution**:
+```javascript
+// Use shorter expiration times and refresh tokens
+const token = jwt.sign(
+  { email: 'user@example.com', exp: Math.floor(Date.now() / 1000) + 600 },
+  secret,
+  { algorithm: 'HS256' }
+);
+
+// Check token expiration
+const decoded = jwt.decode(token);
+console.log('Expires:', new Date(decoded.exp * 1000));
+```
+
+### Debug Mode
+
+Enable debug logging to troubleshoot issues:
+
+```python
+# File: label_studio/core/settings/label_studio.py
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'label_studio_sso': {
+            'handlers': ['console'],
+            'level': 'DEBUG',  # Enable debug logs
+            'propagate': False,
+        },
+    },
+}
+```
+
+Then check logs:
+```bash
+# You'll see detailed JWT authentication logs:
+# [JWT Backend] Method 1: Verifying external JWT
+# [JWT Backend] Payload: {'email': 'user@example.com', ...}
+# [JWT Backend] email_claim=email, email=user@example.com
 ```
 
 ---
