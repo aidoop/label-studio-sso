@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [6.0.2] - 2025-10-16
+
+### Added
+
+- **DRF Authentication Class for iframe/embedded scenarios**
+  - Added `JWTSSOSessionAuthentication` class for REST framework
+  - Extends `SessionAuthentication` with CSRF exemption
+  - Enables API calls from embedded Label Studio without CSRF tokens
+  - Required for Label Studio integration (referenced in REST_FRAMEWORK settings)
+
+### Why This Matters
+
+When Label Studio is embedded in iframe (e.g., Things-Factory integration), the frontend needs to make API calls without CSRF tokens. This authentication class allows JWT-authenticated sessions to bypass CSRF checks, enabling seamless API communication in embedded contexts.
+
+---
+
 ## [6.0.1] - 2025-10-16
 
 ### Documentation
