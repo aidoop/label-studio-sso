@@ -75,7 +75,6 @@ class TestJWTAutoLoginMiddleware:
             mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = None
-            mock_settings.JWT_SSO_SESSION_VERIFY_URL = None
             with patch("label_studio_sso.middleware.login") as mock_login:
                 response = middleware(request)
 
@@ -187,7 +186,6 @@ class TestJWTAutoLoginMiddleware:
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"  # Enable cookie auth
             mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
-            mock_settings.JWT_SSO_SESSION_VERIFY_URL = None
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
                 with patch("label_studio_sso.middleware.login") as mock_login:
@@ -197,10 +195,10 @@ class TestJWTAutoLoginMiddleware:
                     assert mock_login.called
                     assert mock_login.call_args[0][1] == user
 
-    def test_url_token_priority_over_cookie(
+    def test_cookie_priority_over_url_token(
         self, middleware, request_factory, user, jwt_secret, get_response
     ):
-        """Test that URL token takes priority over cookie token"""
+        """Test that cookie token takes priority over URL token (more secure)"""
         # Create valid tokens
         url_token = jwt.encode(
             {
@@ -238,10 +236,9 @@ class TestJWTAutoLoginMiddleware:
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"
             mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
-            mock_settings.JWT_SSO_SESSION_VERIFY_URL = None
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
-                # The backend should receive the URL token, not cookie token
+                # The backend should receive the cookie token (higher priority)
                 with patch.object(
                     middleware.jwt_backend,
                     "authenticate",
@@ -249,11 +246,11 @@ class TestJWTAutoLoginMiddleware:
                 ) as mock_auth:
                     response = middleware(request)
 
-                    # Verify authenticate was called with URL token
+                    # Verify authenticate was called with cookie token
                     assert mock_auth.called
-                    # The token argument should be the URL token
+                    # The token argument should be the cookie token (not URL token)
                     call_args = mock_auth.call_args
-                    assert call_args[1]["token"] == url_token
+                    assert call_args[1]["token"] == cookie_token
 
     def test_cookie_fallback_when_no_url_token(
         self, middleware, request_factory, user, jwt_secret, get_response
@@ -286,7 +283,6 @@ class TestJWTAutoLoginMiddleware:
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"
             mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
-            mock_settings.JWT_SSO_SESSION_VERIFY_URL = None
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
                 with patch.object(
@@ -300,50 +296,3 @@ class TestJWTAutoLoginMiddleware:
                     assert mock_auth.called
                     call_args = mock_auth.call_args
                     assert call_args[1]["token"] == cookie_token
-
-    @responses.activate
-    def test_session_cookie_authentication(self, middleware, request_factory, user, get_response):
-        """Test authentication using session cookie (Method 3)"""
-        # Mock session verification API
-        verify_url = "http://client-api:3000/api/auth/verify-session"
-        responses.add(
-            responses.POST,
-            verify_url,
-            json={"valid": True, "email": "test@example.com", "username": "testuser"},
-            status=200,
-        )
-
-        # Request without JWT token, only session cookie
-        request = request_factory.get("/")
-        request.user = MagicMock(is_authenticated=False)
-        request.session = SessionStore()
-        request.session.create()
-        request.COOKIES = {"sessionid": "test-session-cookie"}
-
-        with patch("label_studio_sso.backends.settings") as mock_backend_settings:
-            mock_backend_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_backend_settings.JWT_SSO_TOKEN_PARAM = "token"
-            mock_backend_settings.JWT_SSO_COOKIE_NAME = None
-            mock_backend_settings.JWT_SSO_SESSION_VERIFY_URL = verify_url
-            mock_backend_settings.JWT_SSO_SESSION_VERIFY_SECRET = "shared-secret"
-            mock_backend_settings.JWT_SSO_SESSION_COOKIE_NAME = "sessionid"
-            mock_backend_settings.JWT_SSO_SESSION_AUTO_CREATE_USERS = False
-
-            with patch("label_studio_sso.middleware.settings") as mock_middleware_settings:
-                mock_middleware_settings.JWT_SSO_SESSION_VERIFY_URL = verify_url
-                mock_middleware_settings.JWT_SSO_TOKEN_PARAM = "token"
-                mock_middleware_settings.JWT_SSO_COOKIE_NAME = None
-
-                with patch("label_studio_sso.backends.cache") as mock_cache:
-                    mock_cache.get.return_value = None
-
-                    with patch("label_studio_sso.middleware.login") as mock_login:
-                        response = middleware(request)
-
-                        # Verify login was called with session backend
-                        assert mock_login.called
-                        assert mock_login.call_args[0][1] == user
-                        assert (
-                            mock_login.call_args[1]["backend"]
-                            == "label_studio_sso.backends.SessionCookieAuthenticationBackend"
-                        )

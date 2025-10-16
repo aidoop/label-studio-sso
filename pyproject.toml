@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "label-studio-sso"
-version = "4.0.1"
+version = "5.0.0"
 description = "Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system"
 readme = "README.md"
 requires-python = ">=3.8"

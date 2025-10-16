@@ -2,14 +2,14 @@
 Setup configuration for label-studio-sso package
 """
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
     name="label-studio-sso",
-    version="4.0.1",
+    version="5.0.0",
     author="AIdoop Team",
     author_email="admin@aidoop.com",
     description="Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system",

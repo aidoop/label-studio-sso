@@ -41,7 +41,4 @@ JWT_SSO_FIRST_NAME_CLAIM = "first_name"
 JWT_SSO_LAST_NAME_CLAIM = "last_name"
 JWT_SSO_AUTO_CREATE_USERS = True
 
-# Needed for testing
-THINGS_FACTORY_JWT_SECRET = "test-jwt-secret"  # Backward compatibility for old tests
-
 USE_TZ = True

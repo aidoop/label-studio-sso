@@ -11,7 +11,7 @@ Provides:
 - Simple integration with any JWT-based system
 """
 
-__version__ = "3.0.0"
+__version__ = "5.0.0"
 __author__ = "Label Studio SSO Team"
 __license__ = "MIT"
 

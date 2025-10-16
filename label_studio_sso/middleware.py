@@ -1,13 +1,16 @@
 """
 Generic JWT Auto-Login Middleware
 
-Automatically logs in users when they access Label Studio with a valid JWT token
-or session cookie.
+Automatically logs in users when they access Label Studio with a valid JWT token.
 
-Supports 3 authentication methods:
+Supports 2 authentication methods:
 1. External JWT (default)
 2. Label Studio Native JWT (JWT_SSO_VERIFY_NATIVE_TOKEN=True)
-3. External Session Cookie (JWT_SSO_SESSION_VERIFY_URL configured)
+
+Authentication Priority:
+1. Django Session (ls_sessionid) - Fast, no JWT verification needed
+2. JWT Cookie (JWT_SSO_COOKIE_NAME) - Secure, HttpOnly cookie
+3. JWT URL Parameter (JWT_SSO_TOKEN_PARAM) - Backward compatibility
 """
 
 import logging
@@ -17,65 +20,78 @@ from django.conf import settings
 from django.contrib.auth import login
 from django.utils.deprecation import MiddlewareMixin
 
-from .backends import JWTAuthenticationBackend, SessionCookieAuthenticationBackend
+from .backends import JWTAuthenticationBackend
 
 logger = logging.getLogger(__name__)
 
 
 class JWTAutoLoginMiddleware(MiddlewareMixin):
     """
-    Middleware to automatically log in users via JWT token or session cookie.
+    Middleware to automatically log in users via JWT token.
 
-    Supports 3 authentication methods:
+    Supports 2 authentication methods:
     1. External JWT: Client generates JWT with shared secret
     2. Label Studio Native JWT: Reuse Label Studio's own JWT tokens
-    3. External Session Cookie: Verify client session cookies via API
 
-    Priority order:
-    1. JWT token (URL parameter or cookie) - Method 1 or 2
-    2. External session cookie - Method 3
+    Authentication Priority:
+    1. Django Session (checked by AuthenticationMiddleware before this)
+       - If user already authenticated, skip JWT verification (performance optimization)
+    2. JWT Cookie (JWT_SSO_COOKIE_NAME) - Preferred, more secure
+       - HttpOnly cookie, not visible to JavaScript
+       - Not exposed in URLs, browser history, or logs
+    3. JWT URL Parameter (JWT_SSO_TOKEN_PARAM) - Backward compatibility
+       - Less secure, exposed in URLs
+       - Kept for legacy systems
 
     Configuration (in Django settings.py):
-        # Method 1 & 2 (JWT)
-        JWT_SSO_TOKEN_PARAM: URL parameter name for token (default: 'token')
-        JWT_SSO_COOKIE_NAME: Cookie name for JWT token (optional)
+        JWT_SSO_COOKIE_NAME: Cookie name for JWT token (recommended: 'ls_auth_token')
+        JWT_SSO_TOKEN_PARAM: URL parameter name for token (default: 'token', legacy)
         JWT_SSO_VERIFY_NATIVE_TOKEN: Enable native JWT verification (default: False)
 
-        # Method 3 (Session Cookie)
-        JWT_SSO_SESSION_VERIFY_URL: Client API URL for session verification
-        JWT_SSO_SESSION_VERIFY_SECRET: Shared secret for API authentication
-        JWT_SSO_SESSION_COOKIE_NAME: Session cookie name (default: 'sessionid')
+    Example Configuration:
+        # Recommended setup (Cookie-based SSO)
+        JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # Initial authentication token
+        SESSION_COOKIE_NAME = 'ls_sessionid'   # Persistent session after login
+
+        # Flow:
+        # 1. Client sets ls_auth_token cookie (10 min expiry)
+        # 2. First request: JWT verified, session created (ls_sessionid)
+        # 3. Subsequent requests: Session used (fast, no JWT verification)
+        # 4. Session expires: Fall back to ls_auth_token
     """
 
     def __init__(self, get_response):
         super().__init__(get_response)
         self.jwt_backend = JWTAuthenticationBackend()
-        self.session_backend = SessionCookieAuthenticationBackend()
 
     def process_request(self, request):
-        # Skip if user is already authenticated
+        # Skip if user is already authenticated via Django session
         if request.user.is_authenticated:
-            logger.debug(f"User already authenticated: {request.user.email}")
-            print(f"[SSO Middleware] User already authenticated: {request.user.email}")
+            logger.debug(f"User already authenticated via session: {request.user.email}")
+            print(f"[SSO Middleware] User already authenticated via session: {request.user.email}")
             return
 
         user = None
         auth_backend = None
 
-        # Priority 1: Check for JWT token (Method 1 or 2)
-        token_param = getattr(settings, "JWT_SSO_TOKEN_PARAM", "token")
-        token = request.GET.get(token_param)
+        # Priority 1: Check for JWT token in Cookie (preferred, more secure)
+        token = None
+        cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
+        if cookie_name:
+            token = request.COOKIES.get(cookie_name)
+            if token:
+                logger.info(f"JWT token found in cookie: {cookie_name}")
+                print(f"[SSO Middleware] JWT token found in cookie '{cookie_name}'")
+                print(f"[SSO Middleware] Token from cookie: {token[:20]}...")
 
-        print(f"[SSO Middleware] Checking for token param '{token_param}' in URL")
-        print(f"[SSO Middleware] Token from URL: {token[:20] if token else 'None'}...")
-
-        # If no token in URL, check JWT cookie
+        # Priority 2: Check for JWT token in URL parameter (fallback, backward compatibility)
         if not token:
-            cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
-            if cookie_name:
-                token = request.COOKIES.get(cookie_name)
-                print(f"[SSO Middleware] Checking cookie '{cookie_name}' for JWT token")
-                print(f"[SSO Middleware] Token from cookie: {token[:20] if token else 'None'}...")
+            token_param = getattr(settings, "JWT_SSO_TOKEN_PARAM", "token")
+            token = request.GET.get(token_param)
+            if token:
+                logger.info(f"JWT token found in URL parameter: {token_param}")
+                print(f"[SSO Middleware] JWT token found in URL param '{token_param}'")
+                print(f"[SSO Middleware] Token from URL: {token[:20]}...")
 
         if token:
             logger.info("JWT token detected, attempting auto-login")
@@ -87,30 +103,35 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
             print(f"[SSO Middleware] JWT authentication result: {user}")
 
-        # Priority 2: Check for external session cookie (Method 3)
-        if not user:
-            verify_url = getattr(settings, "JWT_SSO_SESSION_VERIFY_URL", None)
-            if verify_url:
-                logger.info("Attempting session cookie authentication")
-                print(f"[SSO Middleware] No JWT token, trying session cookie authentication")
-
-                user = self.session_backend.authenticate(request)
-                auth_backend = "label_studio_sso.backends.SessionCookieAuthenticationBackend"
-
-                print(f"[SSO Middleware] Session authentication result: {user}")
-
         # Log in the user if authentication succeeded
         if user:
             login(request, user, backend=auth_backend)
             # Mark this session as SSO auto-login
             request.session["jwt_auto_login"] = True
-            request.session["sso_method"] = "jwt" if "JWT" in auth_backend else "session"
+            request.session["sso_method"] = "jwt"
             request.session["last_login"] = time.time()
-            logger.info(f"User auto-logged in via {request.session['sso_method']}: {user.email}")
-            print(
-                f"[SSO Middleware] User auto-logged in via {request.session['sso_method']}: {user.email}"
-            )
+            logger.info(f"User auto-logged in via JWT: {user.email}")
+            print(f"[SSO Middleware] User auto-logged in via JWT: {user.email}")
         else:
-            if token or verify_url:
-                logger.warning("SSO authentication failed")
-                print(f"[SSO Middleware] SSO authentication FAILED")
+            if token:
+                logger.warning("JWT authentication failed")
+                print(f"[SSO Middleware] JWT authentication FAILED")
+
+    def process_response(self, request, response):
+        """
+        Clean up expired JWT token cookie from response.
+
+        If JWT token was expired during authentication, delete the cookie
+        to prevent repeated authentication attempts with invalid token.
+        """
+        if getattr(request, "_sso_jwt_expired", False):
+            cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
+            if cookie_name:
+                # Delete expired token cookie
+                response.delete_cookie(
+                    cookie_name, path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/label-studio")
+                )
+                logger.info(f"Deleted expired JWT token cookie: {cookie_name}")
+                print(f"[SSO Middleware] Deleted expired token cookie: {cookie_name}")
+
+        return response

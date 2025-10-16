@@ -17,24 +17,24 @@ This package provides flexible authentication backends for **Label Studio** that
 
 > **📌 About "SSO"**: This package provides **authentication integration** between external systems and Label Studio, commonly referred to as "SSO integration" in the industry. While not traditional Single Sign-On (one login → all services), it enables seamless authentication where users don't need to login separately to Label Studio. See [Understanding SSO](#-understanding-sso) for details.
 
-### 3 Authentication Methods
+### 2 Authentication Methods
 
 | Method | Description | Use Case |
 |--------|-------------|----------|
-| **Method 1: External JWT** | Client generates JWT with shared secret | Independent systems, Auth0, Keycloak (recommended) |
-| **Method 2: Native JWT** | Reuse Label Studio's own JWT tokens | Simple iframe integration without external JWT |
-| **Method 3: Session Cookie** | Verify external session cookies via API | Legacy systems with existing session management |
+| **Method 1: External JWT** | Client generates JWT with shared secret | Independent systems, Auth0, Keycloak |
+| **Method 2: Native JWT (Recommended)** | Label Studio issues JWT tokens via API | All integrations, simplest and most secure |
 
 ### Key Features
 
-- ✅ **Three Authentication Methods**: External JWT, Native JWT, Session Cookie
-- ✅ **Multiple Token Transmission**: URL parameter, Cookie, or Session verification
-- ✅ **Automatic Fallback**: JWT (URL/Cookie) → Session Cookie → Standard auth
+- ✅ **Two Authentication Methods**: External JWT, Native JWT (recommended)
+- ✅ **Multiple Token Transmission**: Cookie (recommended), URL parameter
+- ✅ **Automatic Fallback**: Django Session → JWT Cookie → JWT URL
+- ✅ **Secure Cookie-based Auth**: HttpOnly cookies, no URL exposure
+- ✅ **Expired Token Cleanup**: Automatic deletion of expired JWT cookies
 - ✅ **Configurable Claims**: Map any JWT claim to user fields
-- ✅ **Auto-User Creation**: Optionally create users from JWT/session data
+- ✅ **Auto-User Creation**: Optionally create users from JWT data
 - ✅ **Zero Label Studio Modifications**: Pure Django plugin
 - ✅ **Framework Agnostic**: Works with Node.js, Python, Java, .NET, etc.
-- ✅ **Session Caching**: Reduce API calls with configurable TTL (Method 3)
 
 ---
 
@@ -73,7 +73,14 @@ MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 # Method 1 Configuration
 JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')  # Shared with client
 JWT_SSO_ALGORITHM = 'HS256'
-JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter
+
+# 🔐 Cookie-based (Recommended - More Secure)
+JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # HttpOnly cookie
+JWT_SSO_COOKIE_PATH = '/label-studio'  # Optional, default path
+
+# 🔓 URL-based (Legacy - Less Secure)
+JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (for backward compatibility)
+
 JWT_SSO_EMAIL_CLAIM = 'email'
 JWT_SSO_AUTO_CREATE_USERS = False  # or True
 ```
@@ -90,16 +97,28 @@ const token = jwt.sign(
   { algorithm: 'HS256' }
 );
 
-// Open Label Studio in iframe
+// ✅ Recommended: Set HttpOnly cookie (more secure)
+response.cookie('ls_auth_token', token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/label-studio',
+  maxAge: 600000  // 10 minutes
+});
+
+// Then open Label Studio (no token in URL!)
 const iframe = document.createElement('iframe');
-iframe.src = `http://labelstudio.example.com?token=${token}`;
+iframe.src = 'http://labelstudio.example.com/';  // Clean URL!
+
+// ⚠️ Legacy: URL parameter (less secure, backward compatibility)
+// iframe.src = `http://labelstudio.example.com?token=${token}`;
 ```
 
 ---
 
-### Method 2: Label Studio Native JWT
+### Method 2: Label Studio Issues JWT (Recommended for iframe integration)
 
-**Use when**: You want simple iframe integration without managing external JWT secrets
+**Use when**: You want Label Studio to issue its own JWT tokens - most secure for same-origin setups
 
 **1. Configure Label Studio**:
 
@@ -110,83 +129,73 @@ INSTALLED_APPS += ['label_studio_sso']
 AUTHENTICATION_BACKENDS = ['label_studio_sso.backends.JWTAuthenticationBackend', ...]
 MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 
-# Method 2 Configuration
-JWT_SSO_VERIFY_NATIVE_TOKEN = True  # Enable native JWT verification
-JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
-JWT_SSO_TOKEN_PARAM = 'token'
-```
-
-**2. Get JWT from Label Studio API**:
-
-```javascript
-// Get JWT token from Label Studio
-const response = await fetch('http://labelstudio.example.com/api/current-user/token', {
-  headers: { 'Authorization': `Token ${ADMIN_API_KEY}` }
-});
-const { token } = await response.json();
-
-// Open in iframe
-iframe.src = `http://labelstudio.example.com?token=${token}`;
-```
-
----
-
-### Method 3: External Session Cookie
-
-**Use when**: You have an existing session-based authentication system (legacy Django, Express, etc.)
-
-**1. Configure Label Studio**:
-
-```python
-# label_studio/core/settings/label_studio.py
-
-INSTALLED_APPS += ['label_studio_sso']
-AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.JWTAuthenticationBackend',
-    'label_studio_sso.backends.SessionCookieAuthenticationBackend',  # Add this
-    # ... other backends ...
+# Add URL patterns
+from django.urls import path, include
+urlpatterns += [
+    path('', include('label_studio_sso.urls')),
 ]
-MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 
-# Method 3 Configuration
-JWT_SSO_SESSION_VERIFY_URL = 'http://client-api:3000/api/auth/verify-session'
-JWT_SSO_SESSION_VERIFY_SECRET = os.getenv('SESSION_VERIFY_SECRET')
-JWT_SSO_SESSION_COOKIE_NAME = 'sessionid'
-JWT_SSO_SESSION_VERIFY_TIMEOUT = 5
-JWT_SSO_SESSION_CACHE_TTL = 300  # 5 minutes
-JWT_SSO_SESSION_AUTO_CREATE_USERS = True
+# Method 2 Configuration
+JWT_SSO_VERIFY_NATIVE_TOKEN = True  # Use Label Studio's own SECRET_KEY
+JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
+JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # Cookie-based (recommended)
 
-# For subdomain cookie sharing
-SESSION_COOKIE_DOMAIN = '.example.com'  # Must start with dot!
-SESSION_COOKIE_SAMESITE = 'Lax'
+# API Configuration (Method 2)
+SSO_TOKEN_EXPIRY = 600  # 10 minutes
+SSO_AUTO_CREATE_USERS = True  # Auto-create users
+
+# Django REST Framework (required for Token authentication)
+INSTALLED_APPS += ['rest_framework', 'rest_framework.authtoken']
 ```
 
-**2. Implement client verification API**:
+**2. Client requests JWT from Label Studio API**:
 
 ```javascript
-// Node.js + Express example
-app.post('/api/auth/verify-session', (req, res) => {
-  // 1. Verify shared secret
-  if (req.headers.authorization !== `Bearer ${process.env.SESSION_VERIFY_SECRET}`) {
-    return res.status(401).json({ valid: false });
+// Node.js/Express example
+const axios = require('axios');
+
+// Step 1: Get Label Studio admin API token
+// (from Label Studio: Account Settings → Access Token)
+const labelStudioApiToken = process.env.LABEL_STUDIO_API_TOKEN;
+
+// Step 2: Request JWT token from Label Studio
+const response = await axios.post(
+  'http://labelstudio.example.com/api/sso/token',
+  { email: user.email },
+  {
+    headers: {
+      'Authorization': `Token ${labelStudioApiToken}`,
+      'Content-Type': 'application/json'
+    }
   }
+);
 
-  // 2. Get session cookie
-  const sessionCookie = req.body.session_cookie;
+const { token, expires_in } = response.data;
 
-  // 3. Verify session (Redis, DB, etc.)
-  const session = await getSession(sessionCookie);
-
-  // 4. Return user info
-  res.json({
-    valid: !!session,
-    email: session?.user?.email,
-    username: session?.user?.username,
-    first_name: session?.user?.firstName,
-    last_name: session?.user?.lastName
-  });
+// Step 3: Set HttpOnly cookie (recommended)
+res.cookie('ls_auth_token', token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/label-studio',
+  maxAge: expires_in * 1000
 });
+
+// Step 4: Open Label Studio iframe (clean URL!)
+const iframe = document.createElement('iframe');
+iframe.src = 'http://labelstudio.example.com/';
+
+// ⚠️ Or URL parameter (legacy)
+// iframe.src = `http://labelstudio.example.com?token=${token}`;
 ```
+
+**Advantages**:
+- ✅ Uses Label Studio's existing API token system
+- ✅ No additional secrets needed
+- ✅ Admin-level authentication required
+- ✅ Label Studio controls token issuance
+- ✅ Secure HttpOnly cookies
+- ✅ Clean URLs
 
 ---
 
@@ -583,18 +592,30 @@ For issues, questions, or feature requests, please open an issue on [GitHub](htt
 
 ## 🚀 Changelog
 
-### v3.0.0 (2025-01-XX)
-- ✨ Added 3 authentication methods: External JWT, Native JWT, Session Cookie
-- ✨ Added SessionCookieAuthenticationBackend for legacy system integration
-- ✨ Added Label Studio Native JWT support
-- 📝 Complete documentation overhaul with implementation guide
-- 🧪 Comprehensive test suite (32 tests)
-- ♻️ Refactored middleware to support multiple backends
-- 🔒 Enhanced security with session caching and timeout controls
+### v5.0.0 (2025-10-16) - Breaking Changes
+- ❌ **REMOVED**: Method 3 (External Session Cookie Authentication)
+  - Removed `SessionCookieAuthenticationBackend` class
+  - Removed session verification logic from middleware
+  - Removed session-related configuration variables
+- ✅ **Simplified**: Now supports 2 authentication methods only
+  - Method 1: External JWT (client generates)
+  - Method 2: Native JWT (Label Studio issues) - **Recommended**
+- 📝 Documentation cleanup and clarification
+- 🎯 Focused on proven, efficient authentication patterns
+
+### v4.0.1 (2025-01-XX)
+- ✨ Added Label Studio Native JWT token issuance API
+- ✨ Added apiToken-based authentication for SSO token API
+- 🔒 Enhanced security with admin-level token verification
+- 📝 Complete documentation overhaul
+
+### v3.0.0
+- ✨ Added 3 authentication methods (later reduced to 2)
+- ✨ Added JWT cookie support
+- 🔒 Enhanced security with HttpOnly cookies
 
 ### v2.0.x
 - Session-based authentication (deprecated)
-- Framework-specific implementation (deprecated)
 
 ### v1.0.x
 - Initial JWT URL parameter support
@@ -615,7 +636,7 @@ The term "SSO" (Single Sign-On) in this package refers to **authentication integ
 | **Example** | Google login → Gmail, YouTube, Drive all accessible | Your app login → Label Studio accessible via JWT |
 | **Session Sharing** | ✅ Automatic across all services | ❌ Each system has own session |
 | **User Experience** | Login once, access everywhere | Login to your app, auto-login to Label Studio |
-| **Implementation** | Complex (SAML, OAuth, OpenID) | Simple (JWT tokens or session verification) |
+| **Implementation** | Complex (SAML, OAuth, OpenID) | Simple (JWT tokens) |
 | **Best For** | Enterprise-wide authentication | Embedding Label Studio in your app |
 
 ### Why We Call It "SSO"
