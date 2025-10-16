@@ -5,7 +5,7 @@ Native JWT authentication plugin for Label Studio enabling seamless SSO integrat
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Version: 6.0.2](https://img.shields.io/badge/version-6.0.2-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Version: 6.0.3](https://img.shields.io/badge/version-6.0.3-blue.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
 [![Label Studio: OSS Only](https://img.shields.io/badge/Label%20Studio-OSS%20Only-orange.svg)](https://github.com/HumanSignal/label-studio)

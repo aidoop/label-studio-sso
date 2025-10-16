@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [6.0.2] - 2025-10-16
+## [6.0.3] - 2025-10-16
+
+### Removed
+
+- **Removed authentication.py (JWTSSOSessionAuthentication class)**
+  - Class was unnecessary - Token authentication is sufficient for API calls
+  - CSRF-exempt session authentication poses security risk
+  - Label Studio's `TokenAuthenticationPhaseout` already handles all API authentication
+  - No functional impact - v6.0.2 existed for less than 1 hour
+
+### Rationale
+
+The `JWTSSOSessionAuthentication` class added in v6.0.2 was unnecessary because:
+
+1. **Token authentication is sufficient**: Label Studio uses `Authorization: Token` headers for API calls
+2. **Security concern**: CSRF exemption creates potential attack vector
+3. **Not actually used**: Label Studio frontend doesn't rely on session-only authentication
+4. **Middleware handles login**: `JWTAutoLoginMiddleware` already creates Django sessions from JWT
+
+The complete authentication flow works without this class:
+```
+1. JWT Cookie/URL → JWTAutoLoginMiddleware → Django session created
+2. API calls → TokenAuthenticationPhaseout → Authenticated
+```
+
+---
+
+## [6.0.2] - 2025-10-16 (DEPRECATED - Use v6.0.3)
 
 ### Added
 
@@ -19,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Why This Matters
 
-When Label Studio is embedded in iframe (e.g., Things-Factory integration), the frontend needs to make API calls without CSRF tokens. This authentication class allows JWT-authenticated sessions to bypass CSRF checks, enabling seamless API communication in embedded contexts.
+When Label Studio is embedded in iframe, the frontend needs to make API calls without CSRF tokens. This authentication class allows JWT-authenticated sessions to bypass CSRF checks, enabling seamless API communication in embedded contexts.
 
 ---
 
@@ -50,6 +77,7 @@ When Label Studio is embedded in iframe (e.g., Things-Factory integration), the 
 ### 📌 Important Notice
 
 **This package is for Label Studio OSS (Open Source) only!**
+
 - ✅ **Use this package**: If you're using Label Studio Open Source
 - ❌ **Don't use this package**: If you're using Label Studio Enterprise
   - Enterprise has built-in SAML/LDAP/OAuth SSO features
@@ -93,6 +121,7 @@ When Label Studio is embedded in iframe (e.g., Things-Factory integration), the 
 If you were using Method 1 (External JWT), migrate to **Method 2 (Native JWT)**:
 
 #### Before (Method 1 - REMOVED)
+
 ```python
 # Label Studio settings.py
 JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')  # Shared secret
@@ -112,6 +141,7 @@ token = jwt.sign(
 ```
 
 #### After (Method 2 - ONLY OPTION)
+
 ```python
 # Label Studio settings.py
 INSTALLED_APPS += ['rest_framework', 'rest_framework.authtoken']
@@ -144,6 +174,7 @@ res.cookie('ls_auth_token', token, {
 ```
 
 **Benefits of Method 2**:
+
 - ✅ No shared secrets (more secure)
 - ✅ No JWT library needed on client (simpler)
 - ✅ Label Studio controls token issuance (centralized)
@@ -203,6 +234,7 @@ res.cookie('ls_auth_token', token, {
 If you were using Method 3, migrate to **Method 2 (Native JWT)** - the recommended approach:
 
 #### Before (Method 3)
+
 ```python
 # Label Studio settings.py
 JWT_SSO_SESSION_VERIFY_URL = 'http://client:3000/api/auth/verify-session'
@@ -219,6 +251,7 @@ def verify_session(request):
 ```
 
 #### After (Method 2 - Recommended)
+
 ```python
 # Label Studio settings.py
 INSTALLED_APPS += ['rest_framework', 'rest_framework.authtoken']
@@ -244,6 +277,7 @@ ctx.cookies.set('ls_auth_token', token, {
 ```
 
 **Benefits of Method 2**:
+
 - ✅ No client API required (remove session verification endpoint)
 - ✅ Reduced network calls (1 call instead of per-request verification)
 - ✅ No circular dependency
