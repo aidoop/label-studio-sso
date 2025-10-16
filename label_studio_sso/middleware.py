@@ -1,15 +1,12 @@
 """
-Generic JWT Auto-Login Middleware
+Native JWT Auto-Login Middleware
 
-Automatically logs in users when they access Label Studio with a valid JWT token.
-
-Supports 2 authentication methods:
-1. External JWT (default)
-2. Label Studio Native JWT (JWT_SSO_VERIFY_NATIVE_TOKEN=True)
+Automatically logs in users when they access Label Studio with a valid JWT token
+issued by Label Studio's /api/sso/token endpoint.
 
 Authentication Priority:
 1. Django Session (ls_sessionid) - Fast, no JWT verification needed
-2. JWT Cookie (JWT_SSO_COOKIE_NAME) - Secure, HttpOnly cookie
+2. JWT Cookie (JWT_SSO_COOKIE_NAME) - Secure, HttpOnly cookie (recommended)
 3. JWT URL Parameter (JWT_SSO_TOKEN_PARAM) - Backward compatibility
 """
 
@@ -29,9 +26,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
     """
     Middleware to automatically log in users via JWT token.
 
-    Supports 2 authentication methods:
-    1. External JWT: Client generates JWT with shared secret
-    2. Label Studio Native JWT: Reuse Label Studio's own JWT tokens
+    Uses Label Studio Native JWT tokens issued via /api/sso/token endpoint.
 
     Authentication Priority:
     1. Django Session (checked by AuthenticationMiddleware before this)
@@ -45,8 +40,8 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
     Configuration (in Django settings.py):
         JWT_SSO_COOKIE_NAME: Cookie name for JWT token (recommended: 'ls_auth_token')
-        JWT_SSO_TOKEN_PARAM: URL parameter name for token (default: 'token', legacy)
-        JWT_SSO_VERIFY_NATIVE_TOKEN: Enable native JWT verification (default: False)
+        JWT_SSO_TOKEN_PARAM: URL parameter name for token (default: 'token')
+        JWT_SSO_NATIVE_USER_ID_CLAIM: JWT claim containing user ID (default: 'user_id')
 
     Example Configuration:
         # Recommended setup (Cookie-based SSO)
@@ -95,7 +90,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
         if token:
             logger.info("JWT token detected, attempting auto-login")
-            print(f"[SSO Middleware] JWT token detected, attempting authentication")
+            print("[SSO Middleware] JWT token detected, attempting authentication")
 
             # Attempt to authenticate with JWT token (Method 1 or 2)
             user = self.jwt_backend.authenticate(request, token=token)
@@ -115,7 +110,7 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
         else:
             if token:
                 logger.warning("JWT authentication failed")
-                print(f"[SSO Middleware] JWT authentication FAILED")
+                print("[SSO Middleware] JWT authentication FAILED")
 
     def process_response(self, request, response):
         """

@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 import jwt
 import pytest
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
@@ -24,20 +23,25 @@ class TestJWTBackend:
         assert backend is not None
 
     def test_authenticate_with_valid_token(self):
-        """Test authentication with valid token"""
+        """Test authentication with valid token (Native JWT)"""
+        from unittest.mock import patch
+
         backend = JWTAuthenticationBackend()
 
         # Create user
         user = User.objects.create(email="test@example.com", username="testuser")
 
-        # Create token
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # Create token with user_id
         token = jwt.encode(
             {
+                "user_id": user.id,
                 "email": "test@example.com",
-                "username": "testuser",
+                "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            settings.JWT_SSO_SECRET,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -46,10 +50,14 @@ class TestJWTBackend:
         request = factory.get("/")
 
         # Authenticate
-        authenticated_user = backend.authenticate(request, token=token)
+        with patch("label_studio_sso.backends.settings") as mock_settings:
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            authenticated_user = backend.authenticate(request, token=token)
 
         assert authenticated_user is not None
         assert authenticated_user.email == "test@example.com"
+        assert authenticated_user.id == user.id
 
     def test_authenticate_with_invalid_token(self):
         """Test authentication with invalid token"""

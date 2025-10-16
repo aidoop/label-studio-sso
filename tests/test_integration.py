@@ -1,11 +1,11 @@
 """
-Integration tests for label-studio-sso
+Integration tests for label-studio-sso (Method 2: Native JWT)
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import jwt
-import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
@@ -15,57 +15,73 @@ User = get_user_model()
 
 
 class TestIntegration:
-    """Integration tests for the complete SSO flow"""
+    """Integration tests for the complete SSO flow using Native JWT"""
 
-    def test_complete_sso_flow(self, jwt_secret, db):
-        """Test complete SSO authentication flow"""
-        # 1. External system generates JWT token
+    def test_complete_sso_flow(self, db):
+        """Test complete SSO authentication flow with Native JWT"""
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # 1. Create user first (in real scenario, created via API)
+        user = User.objects.create(
+            email="integration@example.com",
+            username="integrationuser",
+        )
+
+        # 2. Label Studio generates JWT token (simulating /api/sso/token)
         user_data = {
-            "email": "integration@example.com",
-            "username": "integrationuser",
-            "first_name": "Integration",
-            "last_name": "Test",
+            "user_id": user.id,
+            "email": user.email,
+            "iat": datetime.utcnow(),
             "exp": datetime.utcnow() + timedelta(minutes=10),
         }
-        token = jwt.encode(user_data, jwt_secret, algorithm="HS256")
+        token = jwt.encode(user_data, labelstudio_secret, algorithm="HS256")
 
-        # 2. User visits Label Studio with token in URL
+        # 3. User visits Label Studio with token in URL
         factory = RequestFactory()
         request = factory.get("/", {"token": token})
         request.user = AnonymousUser()
         request.session = SessionStore()
         request.session.create()
 
-        # 3. Middleware processes the request
+        # 4. Middleware processes the request
         from label_studio_sso.middleware import JWTAutoLoginMiddleware
 
         def get_response(request):
             return None
 
         middleware = JWTAutoLoginMiddleware(get_response)
-        middleware.process_request(request)
 
-        # 4. User should be authenticated
+        with patch("label_studio_sso.backends.settings") as mock_settings:
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            mock_settings.JWT_SSO_TOKEN_PARAM = "token"
+            mock_settings.JWT_SSO_COOKIE_NAME = None
+            middleware.process_request(request)
+
+        # 5. User should be authenticated
         assert request.user.is_authenticated
         assert request.user.email == "integration@example.com"
         assert request.user.username == "integrationuser"
 
-        # 5. User should exist in database
-        user = User.objects.get(email="integration@example.com")
-        assert user is not None
-        assert user.first_name == "Integration"
-        assert user.last_name == "Test"
-
-    def test_multiple_logins_same_user(self, jwt_secret, db):
+    def test_multiple_logins_same_user(self, db):
         """Test multiple login attempts for the same user"""
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # Create user
+        user = User.objects.create(
+            email="repeat@example.com",
+            username="repeatuser",
+        )
+
         user_data = {
-            "email": "repeat@example.com",
-            "username": "repeatuser",
+            "user_id": user.id,
+            "email": user.email,
+            "iat": datetime.utcnow(),
             "exp": datetime.utcnow() + timedelta(minutes=10),
         }
 
         # First login
-        token1 = jwt.encode(user_data, jwt_secret, algorithm="HS256")
+        token1 = jwt.encode(user_data, labelstudio_secret, algorithm="HS256")
         factory = RequestFactory()
         request1 = factory.get("/", {"token": token1})
         request1.user = AnonymousUser()
@@ -78,18 +94,29 @@ class TestIntegration:
             return None
 
         middleware = JWTAutoLoginMiddleware(get_response)
-        middleware.process_request(request1)
+
+        with patch("label_studio_sso.backends.settings") as mock_settings:
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            mock_settings.JWT_SSO_TOKEN_PARAM = "token"
+            mock_settings.JWT_SSO_COOKIE_NAME = None
+            middleware.process_request(request1)
 
         user1_id = request1.user.id
 
         # Second login (new token, same user)
-        token2 = jwt.encode(user_data, jwt_secret, algorithm="HS256")
+        token2 = jwt.encode(user_data, labelstudio_secret, algorithm="HS256")
         request2 = factory.get("/", {"token": token2})
         request2.user = AnonymousUser()
         request2.session = SessionStore()
         request2.session.create()
 
-        middleware.process_request(request2)
+        with patch("label_studio_sso.backends.settings") as mock_settings:
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            mock_settings.JWT_SSO_TOKEN_PARAM = "token"
+            mock_settings.JWT_SSO_COOKIE_NAME = None
+            middleware.process_request(request2)
 
         # Should be the same user
         assert request2.user.id == user1_id
@@ -97,11 +124,29 @@ class TestIntegration:
         # Should only have one user in database
         assert User.objects.filter(email="repeat@example.com").count() == 1
 
-    def test_backend_without_middleware(self, valid_jwt_token, user_data, jwt_secret, db):
+    def test_backend_without_middleware(self, db):
         """Test using backend directly without middleware"""
-        from unittest.mock import patch
-
         from label_studio_sso.backends import JWTAuthenticationBackend
+
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # Create user
+        user = User.objects.create(
+            email="backend@example.com",
+            username="backenduser",
+        )
+
+        # Generate token
+        token = jwt.encode(
+            {
+                "user_id": user.id,
+                "email": user.email,
+                "iat": datetime.utcnow(),
+                "exp": datetime.utcnow() + timedelta(minutes=10),
+            },
+            labelstudio_secret,
+            algorithm="HS256",
+        )
 
         factory = RequestFactory()
         request = factory.get("/")
@@ -110,57 +155,58 @@ class TestIntegration:
         backend = JWTAuthenticationBackend()
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
-            mock_settings.JWT_SSO_FIRST_NAME_CLAIM = "first_name"
-            mock_settings.JWT_SSO_LAST_NAME_CLAIM = "last_name"
-            user = backend.authenticate(request, token=valid_jwt_token)
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            authenticated_user = backend.authenticate(request, token=token)
 
-        assert user is not None
-        assert user.email == user_data["email"]
+        assert authenticated_user is not None
+        assert authenticated_user.email == "backend@example.com"
+        assert authenticated_user.id == user.id
 
-    def test_user_info_update_on_subsequent_login(self, jwt_secret, db):
-        """Test user info is updated on subsequent logins"""
-        # First login
-        payload1 = {
-            "email": "update@example.com",
-            "username": "updateuser",
-            "first_name": "Original",
-            "last_name": "Name",
-            "exp": datetime.utcnow() + timedelta(minutes=10),
-        }
-        token1 = jwt.encode(payload1, jwt_secret, algorithm="HS256")
+    def test_token_with_cookie(self, db):
+        """Test authentication with JWT in cookie (recommended approach)"""
+        from label_studio_sso.middleware import JWTAutoLoginMiddleware
 
-        from label_studio_sso.backends import JWTAuthenticationBackend
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # Create user
+        user = User.objects.create(
+            email="cookie@example.com",
+            username="cookieuser",
+        )
+
+        # Generate token
+        token = jwt.encode(
+            {
+                "user_id": user.id,
+                "email": user.email,
+                "iat": datetime.utcnow(),
+                "exp": datetime.utcnow() + timedelta(minutes=10),
+            },
+            labelstudio_secret,
+            algorithm="HS256",
+        )
 
         factory = RequestFactory()
-        request = factory.get("/")
+        request = factory.get("/")  # No token in URL
         request.user = AnonymousUser()
+        request.session = SessionStore()
+        request.session.create()
+        request.COOKIES = {"ls_auth_token": token}
 
-        backend = JWTAuthenticationBackend()
-        user1 = backend.authenticate(request, token=token1)
+        def get_response(request):
+            return None
 
-        assert user1.first_name == "Original"
+        middleware = JWTAutoLoginMiddleware(get_response)
 
-        # Second login with updated info
-        payload2 = {
-            "email": "update@example.com",
-            "username": "updateuser",
-            "first_name": "Updated",
-            "last_name": "Name",
-            "exp": datetime.utcnow() + timedelta(minutes=10),
-        }
-        token2 = jwt.encode(payload2, jwt_secret, algorithm="HS256")
+        with patch("label_studio_sso.backends.settings") as mock_settings:
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
+            mock_settings.JWT_SSO_TOKEN_PARAM = "token"
+            mock_settings.JWT_SSO_COOKIE_NAME = "ls_auth_token"
+            with patch("label_studio_sso.middleware.settings", mock_settings):
+                middleware.process_request(request)
 
-        user2 = backend.authenticate(request, token=token2)
-
-        assert user2.id == user1.id
-        assert user2.first_name == "Updated"
-
-        # Verify in database
-        user_from_db = User.objects.get(email="update@example.com")
-        assert user_from_db.first_name == "Updated"
+        # User should be authenticated via cookie
+        assert request.user.is_authenticated
+        assert request.user.email == "cookie@example.com"

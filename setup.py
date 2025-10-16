@@ -9,10 +9,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="label-studio-sso",
-    version="5.0.0",
+    version="6.0.0",
     author="AIdoop Team",
     author_email="admin@aidoop.com",
-    description="Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system",
+    description="Native JWT authentication for Label Studio - simple and secure SSO integration",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/aidoop/label-studio-sso",

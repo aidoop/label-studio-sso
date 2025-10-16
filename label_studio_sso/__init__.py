@@ -1,17 +1,17 @@
 """
-Label Studio SSO - Generic JWT Authentication
+Label Studio SSO - Native JWT Authentication
 
-Universal JWT-based SSO authentication for Label Studio.
-Works with any external system that can issue JWT tokens.
+Native JWT-based SSO authentication for Label Studio.
+Label Studio issues JWT tokens via API for seamless user authentication.
 
 Provides:
-- JWT URL parameter authentication
-- Configurable JWT claims mapping
-- Auto-user creation (optional)
-- Simple integration with any JWT-based system
+- Native JWT authentication using Label Studio's SECRET_KEY
+- Cookie and URL parameter authentication
+- Secure API token-based token issuance
+- Simple and secure SSO integration
 """
 
-__version__ = "5.0.0"
+__version__ = "6.0.0"
 __author__ = "Label Studio SSO Team"
 __license__ = "MIT"
 

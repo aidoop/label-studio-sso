@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "label-studio-sso"
-version = "5.0.0"
-description = "Universal JWT-based SSO authentication for Label Studio - works with any JWT-issuing system"
+version = "6.0.0"
+description = "Native JWT authentication for Label Studio - simple and secure SSO integration"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
     {name = "AIdoop Team", email = "admin@aidoop.com"}
 ]
-keywords = ["label-studio", "sso", "jwt", "authentication", "django", "oauth"]
+keywords = ["label-studio", "sso", "jwt", "authentication", "django", "native-jwt"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",

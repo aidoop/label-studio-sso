@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import jwt
 import pytest
-import responses
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import RequestFactory
@@ -46,18 +45,18 @@ def user(db):
 @pytest.mark.django_db
 class TestJWTAutoLoginMiddleware:
 
-    def test_auto_login_with_valid_token(
-        self, middleware, request_factory, user, jwt_secret, get_response
-    ):
+    def test_auto_login_with_valid_token(self, middleware, request_factory, user, get_response):
         """Test auto-login with a valid JWT token in URL"""
+        labelstudio_secret = "labelstudio-secret-key"
+
         # Create valid token
         token = jwt.encode(
             {
-                "email": "test@example.com",
+                "user_id": user.id,
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -67,16 +66,12 @@ class TestJWTAutoLoginMiddleware:
         request.session.create()
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = None
             with patch("label_studio_sso.middleware.login") as mock_login:
-                response = middleware(request)
+                middleware(request)
 
                 # Verify login was called
                 assert mock_login.called
@@ -90,7 +85,7 @@ class TestJWTAutoLoginMiddleware:
         request.session.create()
 
         with patch("label_studio_sso.middleware.login") as mock_login:
-            response = middleware(request)
+            middleware(request)
 
             # Verify login was NOT called
             assert not mock_login.called
@@ -101,23 +96,23 @@ class TestJWTAutoLoginMiddleware:
         request.user = MagicMock(is_authenticated=False)
 
         with patch("label_studio_sso.middleware.login") as mock_login:
-            response = middleware(request)
+            middleware(request)
 
             # Verify login was NOT called
             assert not mock_login.called
 
-    def test_continue_on_authentication_failure(
-        self, middleware, request_factory, jwt_secret, get_response
-    ):
+    def test_continue_on_authentication_failure(self, middleware, request_factory, get_response):
         """Test middleware continues processing even if authentication fails"""
+        labelstudio_secret = "labelstudio-secret-key"
+
         # Create token for non-existent user
         token = jwt.encode(
             {
-                "email": "nonexistent@example.com",
+                "user_id": 99999,  # Non-existent user
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -127,13 +122,10 @@ class TestJWTAutoLoginMiddleware:
         request.session.create()
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = False  # Don't auto-create, expect failure
+            mock_settings.SECRET_KEY = labelstudio_secret
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
             with patch("label_studio_sso.middleware.login") as mock_login:
-                response = middleware(request)
+                middleware(request)
 
                 # Verify login was NOT called
                 assert not mock_login.called
@@ -146,27 +138,27 @@ class TestJWTAutoLoginMiddleware:
         request.user = MagicMock(is_authenticated=False)
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_SECRET = "test-secret"
+            mock_settings.SECRET_KEY = "test-secret"
             with patch("label_studio_sso.middleware.login") as mock_login:
-                response = middleware(request)
+                middleware(request)
 
                 # Verify login was NOT called
                 assert not mock_login.called
                 # Verify response was still generated
                 assert get_response.called
 
-    def test_auto_login_with_cookie_token(
-        self, middleware, request_factory, user, jwt_secret, get_response
-    ):
+    def test_auto_login_with_cookie_token(self, middleware, request_factory, user, get_response):
         """Test auto-login with a valid JWT token in Cookie"""
+        labelstudio_secret = "labelstudio-secret-key"
+
         # Create valid token
         token = jwt.encode(
             {
-                "email": "test@example.com",
+                "user_id": user.id,
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -178,45 +170,42 @@ class TestJWTAutoLoginMiddleware:
         request.COOKIES = {"jwt_auth_token": token}
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"  # Enable cookie auth
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
                 with patch("label_studio_sso.middleware.login") as mock_login:
-                    response = middleware(request)
+                    middleware(request)
 
                     # Verify login was called
                     assert mock_login.called
                     assert mock_login.call_args[0][1] == user
 
-    def test_cookie_priority_over_url_token(
-        self, middleware, request_factory, user, jwt_secret, get_response
-    ):
+    def test_cookie_priority_over_url_token(self, middleware, request_factory, user, get_response):
         """Test that cookie token takes priority over URL token (more secure)"""
-        # Create valid tokens
+        labelstudio_secret = "labelstudio-secret-key"
+
+        # Create different tokens for URL and cookie
+        # In reality, both would have same user_id, but using different ones to test priority
         url_token = jwt.encode(
             {
-                "email": "url@example.com",
+                "user_id": 999,  # Different user_id
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
         cookie_token = jwt.encode(
             {
-                "email": "cookie@example.com",
+                "user_id": user.id,  # Correct user_id
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -228,14 +217,10 @@ class TestJWTAutoLoginMiddleware:
         request.COOKIES = {"jwt_auth_token": cookie_token}
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
                 # The backend should receive the cookie token (higher priority)
@@ -244,7 +229,7 @@ class TestJWTAutoLoginMiddleware:
                     "authenticate",
                     wraps=middleware.jwt_backend.authenticate,
                 ) as mock_auth:
-                    response = middleware(request)
+                    middleware(request)
 
                     # Verify authenticate was called with cookie token
                     assert mock_auth.called
@@ -253,17 +238,19 @@ class TestJWTAutoLoginMiddleware:
                     assert call_args[1]["token"] == cookie_token
 
     def test_cookie_fallback_when_no_url_token(
-        self, middleware, request_factory, user, jwt_secret, get_response
+        self, middleware, request_factory, user, get_response
     ):
         """Test that cookie token is used when URL token is not present"""
+        labelstudio_secret = "labelstudio-secret-key"
+
         # Create valid cookie token
         cookie_token = jwt.encode(
             {
-                "email": "test@example.com",
+                "user_id": user.id,
                 "iat": datetime.utcnow(),
                 "exp": datetime.utcnow() + timedelta(minutes=10),
             },
-            jwt_secret,
+            labelstudio_secret,
             algorithm="HS256",
         )
 
@@ -275,14 +262,10 @@ class TestJWTAutoLoginMiddleware:
         request.COOKIES = {"jwt_auth_token": cookie_token}
 
         with patch("label_studio_sso.backends.settings") as mock_settings:
-            mock_settings.JWT_SSO_VERIFY_NATIVE_TOKEN = False
-            mock_settings.JWT_SSO_SECRET = jwt_secret
-            mock_settings.JWT_SSO_ALGORITHM = "HS256"
-            mock_settings.JWT_SSO_EMAIL_CLAIM = "email"
-            mock_settings.JWT_SSO_USERNAME_CLAIM = "username"
+            mock_settings.JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
+            mock_settings.SECRET_KEY = labelstudio_secret
             mock_settings.JWT_SSO_TOKEN_PARAM = "token"
             mock_settings.JWT_SSO_COOKIE_NAME = "jwt_auth_token"
-            mock_settings.JWT_SSO_AUTO_CREATE_USERS = True
 
             with patch("label_studio_sso.middleware.settings", mock_settings):
                 with patch.object(
@@ -290,7 +273,7 @@ class TestJWTAutoLoginMiddleware:
                     "authenticate",
                     wraps=middleware.jwt_backend.authenticate,
                 ) as mock_auth:
-                    response = middleware(request)
+                    middleware(request)
 
                     # Verify authenticate was called with cookie token
                     assert mock_auth.called

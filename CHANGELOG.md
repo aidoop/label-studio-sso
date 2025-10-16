@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [6.0.0] - 2025-10-16
+
+### Breaking Changes
+
+- **REMOVED: Method 1 (External JWT where client generates tokens)**
+  - Removed external JWT authentication logic from `backends.py` (~120 lines)
+  - Removed all Method 1-specific configuration variables:
+    - `JWT_SSO_SECRET` (no longer needed - uses Label Studio's SECRET_KEY)
+    - `JWT_SSO_ALGORITHM` (always uses HS256 with SECRET_KEY)
+    - `JWT_SSO_EMAIL_CLAIM` (uses user_id instead)
+    - `JWT_SSO_USERNAME_CLAIM` (uses user_id instead)
+    - `JWT_SSO_FIRST_NAME_CLAIM` (not used in Method 2)
+    - `JWT_SSO_LAST_NAME_CLAIM` (not used in Method 2)
+    - `JWT_SSO_AUTO_CREATE_USERS` (moved to API-level: `SSO_AUTO_CREATE_USERS`)
+    - `JWT_SSO_VERIFY_NATIVE_TOKEN` (no longer needed - always native)
+  - Removed Method 1 test cases from test suite (~300 lines)
+
+### Removed
+
+- External JWT generation capability (client-side JWT signing)
+- Shared SECRET_KEY requirement between client and Label Studio
+- Email/username-based user lookup from JWT claims
+- Method 1 documentation from README.md
+- Method 1 usage examples (Node.js, Python, Java client-side JWT generation)
+
+### Changed
+
+- **Simplified to single authentication method**: Label Studio Native JWT only
+- Backend now always uses Label Studio's `SECRET_KEY` for JWT verification
+- JWT tokens always contain `user_id` claim (not email)
+- Updated README.md to document only Method 2 (Native JWT)
+- Simplified configuration - removed 8 configuration variables
+- Updated all tests to use Native JWT authentication
+- Updated package description to "Native JWT authentication for Label Studio"
+
+### Migration Guide
+
+If you were using Method 1 (External JWT), migrate to **Method 2 (Native JWT)**:
+
+#### Before (Method 1 - REMOVED)
+```python
+# Label Studio settings.py
+JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')  # Shared secret
+JWT_SSO_ALGORITHM = 'HS256'
+JWT_SSO_EMAIL_CLAIM = 'email'
+JWT_SSO_AUTO_CREATE_USERS = True
+AUTHENTICATION_BACKENDS = [
+    'label_studio_sso.backends.JWTAuthenticationBackend',
+]
+
+# Client generates JWT
+token = jwt.sign(
+  { email: 'user@example.com', exp: Date.now() + 600 },
+  process.env.JWT_SSO_SECRET,  # Shared secret!
+  { algorithm: 'HS256' }
+);
+```
+
+#### After (Method 2 - ONLY OPTION)
+```python
+# Label Studio settings.py
+INSTALLED_APPS += ['rest_framework', 'rest_framework.authtoken']
+AUTHENTICATION_BACKENDS = [
+    'label_studio_sso.backends.JWTAuthenticationBackend',
+]
+JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
+JWT_SSO_COOKIE_NAME = 'ls_auth_token'
+SSO_TOKEN_EXPIRY = 600
+SSO_AUTO_CREATE_USERS = True
+
+# Add URL patterns
+urlpatterns = [
+    path('api/sso/', include('label_studio_sso.urls')),
+]
+
+# Client requests JWT from Label Studio
+const response = await axios.post(
+  'http://label-studio:8080/api/sso/token',
+  { email: 'user@example.com' },
+  { headers: { 'Authorization': `Token ${apiToken}` } }
+);
+const { token } = response.data;
+
+// Set cookie
+res.cookie('ls_auth_token', token, {
+  httpOnly: true,
+  secure: true
+});
+```
+
+**Benefits of Method 2**:
+- ✅ No shared secrets (more secure)
+- ✅ No JWT library needed on client (simpler)
+- ✅ Label Studio controls token issuance (centralized)
+- ✅ Uses Label Studio's existing SECRET_KEY (no configuration)
+- ✅ Admin-level API token required (more secure)
+
+### Reasons for Removal
+
+1. **Security Concerns**: Method 1 required sharing SECRET_KEY with client applications
+2. **Implementation Complexity**: Clients had to implement JWT generation
+3. **No Real Benefit**: Method 2 provides same functionality with better security
+4. **Simpler Architecture**: Single authentication method easier to maintain
+5. **Label Studio Controls Tokens**: Centralized token issuance is more secure
+
+### Documentation
+
+- Updated `README.md` to document only Method 2
+- Removed all Method 1 examples and configuration
+- Simplified troubleshooting guide
+- Updated security best practices
+
+---
+
 ## [5.0.0] - 2025-10-16
 
 ### Breaking Changes

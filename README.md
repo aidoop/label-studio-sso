@@ -1,39 +1,37 @@
-# Label Studio SSO - Universal Authentication Plugin
+# Label Studio SSO - Native JWT Authentication
 
-Universal authentication plugin for Label Studio supporting multiple SSO methods.
+Native JWT authentication plugin for Label Studio enabling seamless SSO integration.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Version: 5.0.0](https://img.shields.io/badge/version-5.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Version: 6.0.0](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
+
+> **⚠️ Breaking Changes in v6.0.0**: Method 1 (External JWT) has been removed. See [Migration Guide](./MIGRATION_GUIDE_v6.md) for upgrade instructions.
 
 ---
 
 ## 🎯 Overview
 
-This package provides flexible authentication backends for **Label Studio** that support multiple SSO integration methods.
+This package provides JWT-based authentication integration for **Label Studio**, enabling seamless SSO from external applications.
 
 > **📌 About "SSO"**: This package provides **authentication integration** between external systems and Label Studio, commonly referred to as "SSO integration" in the industry. While not traditional Single Sign-On (one login → all services), it enables seamless authentication where users don't need to login separately to Label Studio. See [Understanding SSO](#-understanding-sso) for details.
 
-### 2 Authentication Methods
+### How It Works
 
-| Method | Description | Use Case | Recommended |
-|--------|-------------|----------|-------------|
-| **Method 1: External JWT** | Client generates JWT with shared secret | Independent systems, Auth0, Keycloak | |
-| **Method 2: Native JWT** | Label Studio issues JWT tokens via API | All integrations, simplest and most secure | ⭐ Yes |
+Label Studio issues JWT tokens via a secure API endpoint. Your client application requests tokens and uses them to authenticate users automatically.
 
 ### Key Features
 
-- ✅ **Two Authentication Methods**: External JWT, Native JWT (recommended)
+- ✅ **Simple Architecture**: Label Studio issues JWT tokens, no shared secrets needed
 - ✅ **Multiple Token Transmission**: Cookie (recommended), URL parameter
 - ✅ **Automatic Fallback**: Django Session → JWT Cookie → JWT URL
 - ✅ **Secure Cookie-based Auth**: HttpOnly cookies, no URL exposure
 - ✅ **Expired Token Cleanup**: Automatic deletion of expired JWT cookies
-- ✅ **Configurable Claims**: Map any JWT claim to user fields
-- ✅ **Auto-User Creation**: Optionally create users from JWT data
-- ✅ **Zero Label Studio Modifications**: Pure Django plugin
+- ✅ **Auto-User Creation**: Optionally create users via API
+- ✅ **Zero Label Studio Code Modifications**: Pure Django plugin
 - ✅ **Framework Agnostic**: Works with Node.js, Python, Java, .NET, etc.
 
 ---
@@ -97,116 +95,7 @@ cd /usr/local/lib/python3.9/site-packages/label_studio/core/settings/
 
 ## 🚀 Quick Start
 
-Choose the authentication method that best fits your use case:
-
-### Method 1: External JWT
-
-**Use when**: You have an independent authentication system that can generate JWT tokens (Node.js, Python, Auth0, Keycloak, etc.)
-
-**Step 1: Edit Label Studio Settings**
-
-Edit `label_studio/core/settings/label_studio.py` and add the following:
-
-```python
-# File: label_studio/core/settings/label_studio.py
-import os
-
-# Add to INSTALLED_APPS (find existing INSTALLED_APPS list and add this)
-INSTALLED_APPS += ['label_studio_sso']
-
-# Add to AUTHENTICATION_BACKENDS (must be BEFORE existing backends)
-AUTHENTICATION_BACKENDS = [
-    'label_studio_sso.backends.JWTAuthenticationBackend',  # Add this FIRST
-    'django.contrib.auth.backends.ModelBackend',  # Existing default backend
-    # ... other existing backends ...
-]
-
-# Add to MIDDLEWARE (append at the end)
-MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
-
-# Method 1 Configuration
-JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')  # Shared with client
-JWT_SSO_ALGORITHM = 'HS256'
-
-# 🔐 Cookie-based (Recommended - More Secure)
-JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # HttpOnly cookie
-JWT_SSO_COOKIE_PATH = '/label-studio'  # Optional, default path
-
-# 🔓 URL-based (Legacy - Less Secure)
-JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (for backward compatibility)
-
-JWT_SSO_EMAIL_CLAIM = 'email'
-JWT_SSO_AUTO_CREATE_USERS = False  # Set to True to auto-create users
-```
-
-**Step 2: Set Environment Variables**
-
-```bash
-# Required
-export JWT_SSO_SECRET="your-secret-key-min-32-chars"
-
-# Generate a secure secret:
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-**Step 3: Restart Label Studio**
-
-```bash
-# If running via source
-python label_studio/manage.py runserver
-
-# If running via systemd
-sudo systemctl restart label-studio
-
-# If running via Docker
-docker-compose restart
-```
-
-**Step 4: Verify Configuration**
-
-```bash
-# Check if module is loaded
-python label_studio/manage.py shell
->>> from label_studio_sso.backends import JWTAuthenticationBackend
->>> print("✅ label-studio-sso is installed correctly")
-```
-
-**2. Generate JWT in your client**:
-
-```javascript
-// Node.js example
-const jwt = require('jsonwebtoken');
-
-const token = jwt.sign(
-  { email: 'user@example.com', exp: Math.floor(Date.now() / 1000) + 600 },
-  process.env.JWT_SSO_SECRET,
-  { algorithm: 'HS256' }
-);
-
-// ✅ Recommended: Set HttpOnly cookie (more secure)
-response.cookie('ls_auth_token', token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'strict',
-  path: '/label-studio',
-  maxAge: 600000  // 10 minutes
-});
-
-// Then open Label Studio (no token in URL!)
-const iframe = document.createElement('iframe');
-iframe.src = 'http://labelstudio.example.com/';  // Clean URL!
-
-// ⚠️ Legacy: URL parameter (less secure, backward compatibility)
-// iframe.src = `http://labelstudio.example.com?token=${token}`;
-```
-
----
-
-### Method 2: Label Studio Issues JWT (Recommended)
-
-**Use when**: You want Label Studio to issue its own JWT tokens - simplest and most secure approach
-
-**Step 1: Edit Label Studio Settings**
+### Step 1: Edit Label Studio Settings
 
 Edit `label_studio/core/settings/label_studio.py`:
 
@@ -231,10 +120,10 @@ AUTHENTICATION_BACKENDS = [
 # Add to MIDDLEWARE (append at the end)
 MIDDLEWARE += ['label_studio_sso.middleware.JWTAutoLoginMiddleware']
 
-# Method 2 Configuration
-JWT_SSO_VERIFY_NATIVE_TOKEN = True  # Use Label Studio's own SECRET_KEY
-JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'
+# JWT SSO Configuration
+JWT_SSO_NATIVE_USER_ID_CLAIM = 'user_id'  # Claim containing user ID
 JWT_SSO_COOKIE_NAME = 'ls_auth_token'  # Cookie-based (recommended)
+JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (fallback)
 
 # API Configuration
 SSO_TOKEN_EXPIRY = 600  # 10 minutes
@@ -355,18 +244,23 @@ iframe.src = 'http://labelstudio.example.com/';
 
 ```
 External System (Your App)
-  ↓ Generate JWT token with user info
-  ↓ Create URL: https://label-studio.example.com?token=eyJhbGc...
-  ↓
-User clicks link or iframe loads
+  ↓ Request JWT token from Label Studio API
+  ↓ POST /api/sso/token with user email
   ↓
 Label Studio
-  ↓ JWTAutoLoginMiddleware extracts token from URL
-  ↓ JWTAuthenticationBackend validates JWT signature
-  ↓ Extract user info from JWT claims
-  ↓ Find or create Label Studio user
-  ↓ Auto-login user
-  ✅ User authenticated!
+  ↓ Verify API token (admin level)
+  ↓ Generate JWT with user_id
+  ↓ Return JWT token
+  ↓
+External System
+  ↓ Set HttpOnly cookie with JWT (recommended)
+  ↓ Or use URL parameter: ?token=eyJhbGc...
+  ↓
+User accesses Label Studio
+  ↓ JWTAutoLoginMiddleware extracts token
+  ↓ JWTAuthenticationBackend validates JWT
+  ↓ User authenticated via user_id claim
+  ✅ User logged in!
 ```
 
 ---
@@ -376,97 +270,102 @@ Label Studio
 ### Example 1: Node.js/Express Integration
 
 ```javascript
-const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
-// Generate JWT token for user
-const token = jwt.sign(
+// Get Label Studio admin API token from environment
+const labelStudioApiToken = process.env.LABEL_STUDIO_API_TOKEN;
+
+// Request JWT token from Label Studio
+const response = await axios.post(
+  'http://labelstudio.example.com/api/sso/token',
+  { email: user.email },
   {
-    email: "user@example.com",
-    username: "john_doe",
-    first_name: "John",
-    last_name: "Doe",
-    exp: Math.floor(Date.now() / 1000) + (10 * 60)  // 10 minutes
-  },
-  process.env.JWT_SSO_SECRET,
-  { algorithm: 'HS256' }
+    headers: {
+      'Authorization': `Token ${labelStudioApiToken}`,
+      'Content-Type': 'application/json'
+    }
+  }
 );
 
-// Redirect user to Label Studio
-const labelStudioUrl = `https://label-studio.example.com?token=${token}`;
-res.redirect(labelStudioUrl);
+const { token, expires_in } = response.data;
+
+// Set HttpOnly cookie (recommended)
+res.cookie('ls_auth_token', token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/label-studio',
+  maxAge: expires_in * 1000
+});
+
+// Redirect to Label Studio (clean URL!)
+res.redirect('http://labelstudio.example.com/');
 ```
 
 ### Example 2: Python/Django Integration
 
 ```python
-import jwt
-from datetime import datetime, timedelta
+import requests
 
-# Generate JWT token
-token = jwt.encode(
-    {
-        'email': user.email,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'exp': datetime.utcnow() + timedelta(minutes=10)
-    },
-    settings.JWT_SSO_SECRET,
-    algorithm='HS256'
+# Request JWT token from Label Studio
+response = requests.post(
+    'http://labelstudio.example.com/api/sso/token',
+    json={'email': user.email},
+    headers={
+        'Authorization': f'Token {settings.LABEL_STUDIO_API_TOKEN}',
+        'Content-Type': 'application/json'
+    }
 )
 
-# Embed in iframe or redirect
-label_studio_url = f"https://label-studio.example.com?token={token}"
+token_data = response.json()
+token = token_data['token']
+expires_in = token_data['expires_in']
+
+# Set cookie and redirect
+response = redirect('http://labelstudio.example.com/')
+response.set_cookie(
+    'ls_auth_token',
+    token,
+    httponly=True,
+    secure=True,
+    samesite='Strict',
+    path='/label-studio',
+    max_age=expires_in
+)
+return response
 ```
 
-### Example 3: Java/Spring Boot Integration
+### Example 3: Reverse Proxy with Cookie Auto-Setup
 
-```java
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+For scenarios where Label Studio is embedded in an iframe:
 
-// Generate JWT token
-String token = Jwts.builder()
-    .claim("email", user.getEmail())
-    .claim("first_name", user.getFirstName())
-    .claim("last_name", user.getLastName())
-    .setExpiration(new Date(System.currentTimeMillis() + 600000))  // 10 minutes
-    .signWith(SignatureAlgorithm.HS256, jwtSecret)
-    .compact();
-
-// Redirect to Label Studio
-String labelStudioUrl = "https://label-studio.example.com?token=" + token;
-return "redirect:" + labelStudioUrl;
-```
-
-### Example 4: Cookie-Based Authentication (Reverse Proxy)
-
-For reverse proxy scenarios where Label Studio is behind the same domain:
-
-**Backend (Node.js/Koa):**
 ```javascript
-const jwt = require('jsonwebtoken');
+// Node.js/Koa reverse proxy
+const axios = require('axios');
 
 app.use('/label-studio', async (ctx, next) => {
   const user = ctx.state.user; // Already authenticated user
 
-  if (user && !ctx.cookies.get('jwt_auth_token')) {
-    // Generate JWT token
-    const token = jwt.sign(
+  if (user && !ctx.cookies.get('ls_auth_token')) {
+    // Request JWT from Label Studio API
+    const response = await axios.post(
+      `${labelStudioUrl}/api/sso/token`,
+      { email: user.email },
       {
-        email: user.email,
-        username: user.username,
-        exp: Math.floor(Date.now() / 1000) + (10 * 60)
-      },
-      process.env.JWT_SSO_SECRET,
-      { algorithm: 'HS256' }
+        headers: {
+          'Authorization': `Token ${process.env.LABEL_STUDIO_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
     // Set JWT cookie
-    ctx.cookies.set('jwt_auth_token', token, {
+    ctx.cookies.set('ls_auth_token', response.data.token, {
       path: '/label-studio',
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax'
+      sameSite: 'Lax',
+      maxAge: response.data.expires_in * 1000
     });
   }
 
@@ -475,125 +374,73 @@ app.use('/label-studio', async (ctx, next) => {
 });
 ```
 
-**Label Studio Settings:**
-```python
-JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')
-JWT_SSO_COOKIE_NAME = 'jwt_auth_token'  # Enable cookie-based auth
-JWT_SSO_EMAIL_CLAIM = 'email'
-```
-
-**Benefits:**
-- ✅ No JWT token in URL (more secure)
-- ✅ Seamless iframe integration
-- ✅ Automatic session renewal
-- ✅ Same-origin cookie sharing
-
-### Example 5: Hybrid Approach (URL + Cookie)
-
-Best of both worlds - initial login via URL, subsequent access via cookie:
-
-**Label Studio Settings:**
-```python
-JWT_SSO_SECRET = os.getenv('JWT_SSO_SECRET')
-JWT_SSO_TOKEN_PARAM = 'token'           # URL parameter auth
-JWT_SSO_COOKIE_NAME = 'jwt_auth_token'  # Cookie auth (fallback)
-JWT_SSO_EMAIL_CLAIM = 'email'
-```
-
-**Flow:**
-1. User clicks email link: `https://ls.example.com?token=eyJhbGc...`
-2. JWTAutoLoginMiddleware extracts token from URL
-3. User authenticated, Django session created
-4. Cookie `jwt_auth_token` set for future requests
-5. Subsequent requests use cookie (no token in URL needed)
-
-### Example 6: Custom JWT Claims Mapping
-
-If your JWT uses different claim names:
-
-```bash
-# Configure custom JWT claim mapping
-export JWT_SSO_EMAIL_CLAIM="user_email"
-export JWT_SSO_USERNAME_CLAIM="username"
-export JWT_SSO_FIRST_NAME_CLAIM="given_name"
-export JWT_SSO_LAST_NAME_CLAIM="family_name"
-```
-
-Then your JWT payload:
-```json
-{
-  "user_email": "user@example.com",
-  "username": "john_doe",
-  "given_name": "John",
-  "family_name": "Doe",
-  "exp": 1234567890
-}
-```
-
 ---
 
 ## ⚙️ Configuration Options
 
-### Required Settings
-
-| Setting | Description | Example |
-|---------|-------------|---------|
-| `JWT_SSO_SECRET` | Shared secret key for JWT verification | `"your-secret-key"` |
-
-### Optional Settings
+### JWT Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `JWT_SSO_ALGORITHM` | `HS256` | JWT algorithm (HS256, HS512, RS256, etc.) |
+| `JWT_SSO_NATIVE_USER_ID_CLAIM` | `user_id` | JWT claim containing user ID |
 | `JWT_SSO_TOKEN_PARAM` | `token` | URL parameter name for JWT token |
-| `JWT_SSO_COOKIE_NAME` | `None` | Cookie name for JWT token (optional, for reverse proxy) |
-| `JWT_SSO_EMAIL_CLAIM` | `email` | JWT claim containing user email |
-| `JWT_SSO_USERNAME_CLAIM` | `None` | JWT claim containing username (optional) |
-| `JWT_SSO_FIRST_NAME_CLAIM` | `first_name` | JWT claim for first name |
-| `JWT_SSO_LAST_NAME_CLAIM` | `last_name` | JWT claim for last name |
-| `JWT_SSO_AUTO_CREATE_USERS` | `false` | Auto-create users if not found in Label Studio |
+| `JWT_SSO_COOKIE_NAME` | `None` | Cookie name for JWT token (recommended) |
+
+### API Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `SSO_TOKEN_EXPIRY` | `600` | Token expiry time in seconds (10 minutes) |
+| `SSO_AUTO_CREATE_USERS` | `True` | Auto-create users from API requests |
 
 ---
 
 ## 🔒 Security Best Practices
 
-### 1. Use Strong Secrets
+### 1. Protect API Tokens
 
-Generate a cryptographically secure secret:
+Label Studio API tokens have admin privileges. Store them securely:
 
-```python
-import secrets
-secret = secrets.token_urlsafe(32)
-print(f"JWT_SSO_SECRET={secret}")
+```bash
+# Good: Use environment variables
+export LABEL_STUDIO_API_TOKEN="<your-token>"
+
+# Bad: Hardcode in source
+LABEL_STUDIO_API_TOKEN = "hardcoded"  # ❌ Never do this
 ```
 
 ### 2. Use HTTPS Only
 
-JWT tokens in URLs are visible in browser history and server logs. **Always use HTTPS** in production.
+**Always use HTTPS** in production to protect tokens in transit.
 
 ### 3. Short Token Expiration
 
-Use short-lived tokens (5-10 minutes recommended):
+Use short-lived JWT tokens (default: 10 minutes):
+
+```python
+# Configure in Label Studio settings
+SSO_TOKEN_EXPIRY = 600  # 10 minutes (recommended)
+```
+
+### 4. Use HttpOnly Cookies
+
+Prefer HttpOnly cookies over URL parameters:
 
 ```javascript
-// Good: 10 minutes
-exp: Math.floor(Date.now() / 1000) + (10 * 60)
+// Good: HttpOnly cookie
+res.cookie('ls_auth_token', token, {
+  httpOnly: true,  // ✅ Cannot be accessed by JavaScript
+  secure: true,
+  sameSite: 'strict'
+});
 
-// Bad: 24 hours
-exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+// Bad: URL parameter (legacy)
+const url = `https://ls.example.com?token=${token}`;  // ⚠️ Visible in logs
 ```
 
-### 4. Never Hardcode Secrets
+### 5. Restrict API Token Access
 
-Always use environment variables:
-
-```bash
-# Good
-export JWT_SSO_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-
-# Bad
-JWT_SSO_SECRET = "hardcoded-secret"  # ❌ Never do this
-```
+Only admin-level API tokens can issue SSO tokens. Regularly rotate tokens and revoke unused ones.
 
 ---
 
@@ -640,54 +487,35 @@ True
 
 #### 3. "Invalid JWT signature"
 
-**Problem**: Secret key mismatch between client and Label Studio.
+**Problem**: JWT token verification failed.
 
 **Solution**:
 ```bash
-# Verify JWT_SSO_SECRET matches on both sides
-# Client side:
-echo $JWT_SSO_SECRET
-
-# Label Studio side:
+# Verify Label Studio's SECRET_KEY hasn't changed
 python manage.py shell
 >>> from django.conf import settings
->>> print(settings.JWT_SSO_SECRET)
+>>> print(settings.SECRET_KEY)
 
-# They must match exactly!
+# Ensure tokens are issued by the same Label Studio instance
 ```
 
 #### 4. "User not found in Label Studio"
 
-**Problem**: JWT is valid but user doesn't exist.
+**Problem**: User doesn't exist in Label Studio.
 
 **Solution**:
 ```python
 # Option 1: Enable auto-create users
-JWT_SSO_AUTO_CREATE_USERS = True
+SSO_AUTO_CREATE_USERS = True
 
 # Option 2: Manually create user in Label Studio
 python manage.py createsuperuser
-# Enter email matching JWT claim
+# Enter email that matches API request
 ```
 
-#### 5. "CSRF verification failed"
+#### 5. "API endpoint /api/sso/token returns 404"
 
-**Problem**: Django CSRF protection blocking requests.
-
-**Solution**:
-```python
-# Add to settings for SSO endpoints
-CSRF_TRUSTED_ORIGINS = [
-    'https://your-app.example.com',
-]
-
-# Or for cookie-based auth, ensure SameSite is set correctly
-JWT_SSO_COOKIE_SAMESITE = 'Lax'  # or 'None' for cross-site
-```
-
-#### 6. "API endpoint /api/sso/token returns 404"
-
-**Problem**: URL patterns not configured for Method 2.
+**Problem**: URL patterns not configured.
 
 **Solution**:
 ```python
@@ -703,22 +531,32 @@ urlpatterns = [
 curl http://localhost:8080/api/sso/token
 ```
 
-#### 7. "Token expired" errors
+#### 6. "Token expired" errors
 
 **Problem**: JWT token has expired.
 
 **Solution**:
-```javascript
-// Use shorter expiration times and refresh tokens
-const token = jwt.sign(
-  { email: 'user@example.com', exp: Math.floor(Date.now() / 1000) + 600 },
-  secret,
-  { algorithm: 'HS256' }
-);
+```python
+# Configure longer expiration in Label Studio settings
+SSO_TOKEN_EXPIRY = 1800  # 30 minutes
 
-// Check token expiration
-const decoded = jwt.decode(token);
-console.log('Expires:', new Date(decoded.exp * 1000));
+# Or request fresh tokens more frequently
+```
+
+#### 7. "401 Unauthorized" when calling /api/sso/token
+
+**Problem**: Invalid or missing API token.
+
+**Solution**:
+```bash
+# Verify API token is valid
+curl -X POST http://localhost:8080/api/sso/token \
+  -H "Authorization: Token <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}'
+
+# If fails, generate new token
+python manage.py drf_create_token <username>
 ```
 
 ### Debug Mode
@@ -749,9 +587,8 @@ LOGGING = {
 Then check logs:
 ```bash
 # You'll see detailed JWT authentication logs:
-# [JWT Backend] Method 1: Verifying external JWT
-# [JWT Backend] Payload: {'email': 'user@example.com', ...}
-# [JWT Backend] email_claim=email, email=user@example.com
+# [JWT Backend] Verifying native Label Studio JWT
+# [JWT Backend] Native JWT auth successful: user@example.com
 ```
 
 ---
@@ -761,31 +598,25 @@ Then check logs:
 ### Local Testing
 
 ```bash
-# 1. Set environment variables
-export JWT_SSO_SECRET="test-secret-key"
-export JWT_SSO_AUTO_CREATE_USERS="true"
-
-# 2. Start Label Studio
+# 1. Start Label Studio
 cd /path/to/label-studio
 python manage.py runserver
 
-# 3. Generate test token
-python -c "
-import jwt
-from datetime import datetime, timedelta
+# 2. Create admin API token
+python manage.py drf_create_token admin
 
-token = jwt.encode(
-    {
-        'email': 'test@example.com',
-        'first_name': 'Test',
-        'last_name': 'User',
-        'exp': datetime.utcnow() + timedelta(minutes=10)
-    },
-    'test-secret-key',
-    algorithm='HS256'
-)
-print(f'http://localhost:8080?token={token}')
-"
+# 3. Test SSO token endpoint
+curl -X POST http://localhost:8080/api/sso/token \
+  -H "Authorization: Token <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}'
+
+# Expected response:
+# {"token": "eyJhbGc...", "expires_in": 600}
+
+# 4. Test authentication with JWT token
+# Copy the token from step 3 and visit:
+# http://localhost:8080?token=<jwt-token>
 
 # 4. Open the URL in browser
 ```

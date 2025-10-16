@@ -32,13 +32,14 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SECRET_KEY = "test-secret-key-for-django"
-JWT_SSO_SECRET = "test-jwt-secret"
-JWT_SSO_ALGORITHM = "HS256"
+
+# Method 2 (Native JWT) Configuration
+JWT_SSO_NATIVE_USER_ID_CLAIM = "user_id"
 JWT_SSO_TOKEN_PARAM = "token"
-JWT_SSO_EMAIL_CLAIM = "email"
-JWT_SSO_USERNAME_CLAIM = "username"
-JWT_SSO_FIRST_NAME_CLAIM = "first_name"
-JWT_SSO_LAST_NAME_CLAIM = "last_name"
-JWT_SSO_AUTO_CREATE_USERS = True
+JWT_SSO_COOKIE_NAME = None
+
+# API Configuration
+SSO_TOKEN_EXPIRY = 600
+SSO_AUTO_CREATE_USERS = True
 
 USE_TZ = True
