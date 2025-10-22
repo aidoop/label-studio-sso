@@ -60,11 +60,8 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
         self.jwt_backend = JWTAuthenticationBackend()
 
     def process_request(self, request):
-        # Skip if user is already authenticated via Django session
-        if request.user.is_authenticated:
-            logger.debug(f"User already authenticated via session: {request.user.email}")
-            print(f"[SSO Middleware] User already authenticated via session: {request.user.email}")
-            return
+        # JWT 토큰이 있으면 기존 세션을 무시하고 JWT로 인증
+        # 사용자 전환 시 이전 세션이 남아있어도 새 JWT 토큰으로 재인증됨
 
         user = None
         auth_backend = None
@@ -105,6 +102,8 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
             request.session["jwt_auto_login"] = True
             request.session["sso_method"] = "jwt"
             request.session["last_login"] = time.time()
+            # JWT 인증 성공 시 토큰 삭제 플래그 설정 (세션으로 전환)
+            request._jwt_authenticated = True
             logger.info(f"User auto-logged in via JWT: {user.email}")
             print(f"[SSO Middleware] User auto-logged in via JWT: {user.email}")
         else:
@@ -114,17 +113,31 @@ class JWTAutoLoginMiddleware(MiddlewareMixin):
 
     def process_response(self, request, response):
         """
-        Clean up expired JWT token cookie from response.
+        Clean up JWT token cookie after successful authentication.
 
-        If JWT token was expired during authentication, delete the cookie
-        to prevent repeated authentication attempts with invalid token.
+        JWT 토큰으로 인증 성공 후 Django 세션을 생성했으면,
+        JWT 토큰 쿠키를 삭제하여 이후 요청은 세션만 사용하도록 함.
+        (성능 향상 + 불필요한 JWT 검증 제거)
         """
-        if getattr(request, "_sso_jwt_expired", False):
-            cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
-            if cookie_name:
-                # Delete expired token cookie
+        cookie_name = getattr(settings, "JWT_SSO_COOKIE_NAME", None)
+
+        if cookie_name:
+            # JWT 인증 성공 시 토큰 쿠키 삭제 (세션으로 전환)
+            if getattr(request, "_jwt_authenticated", False):
                 response.delete_cookie(
-                    cookie_name, path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/")
+                    cookie_name,
+                    path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/"),
+                    domain=getattr(settings, "SESSION_COOKIE_DOMAIN", None),
+                )
+                logger.info(f"Deleted JWT token cookie after session creation: {cookie_name}")
+                print(f"[SSO Middleware] JWT → Session: Deleted token cookie '{cookie_name}'")
+
+            # JWT 토큰 만료 시 쿠키 삭제
+            elif getattr(request, "_sso_jwt_expired", False):
+                response.delete_cookie(
+                    cookie_name,
+                    path=getattr(settings, "JWT_SSO_COOKIE_PATH", "/"),
+                    domain=getattr(settings, "SESSION_COOKIE_DOMAIN", None),
                 )
                 logger.info(f"Deleted expired JWT token cookie: {cookie_name}")
                 print(f"[SSO Middleware] Deleted expired token cookie: {cookie_name}")

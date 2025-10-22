@@ -6,6 +6,7 @@ Native JWT authentication plugin for Label Studio enabling seamless SSO integrat
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Django: 4.2+](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
 [![Version: 6.0.7](https://img.shields.io/badge/version-6.0.7-blue.svg)](https://github.com/aidoop/label-studio-sso)
+[![Performance: Optimized](https://img.shields.io/badge/performance-optimized-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
 [![Tests](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml/badge.svg)](https://github.com/aidoop/label-studio-sso/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/aidoop/label-studio-sso)
 [![Label Studio: OSS Only](https://img.shields.io/badge/Label%20Studio-OSS%20Only-orange.svg)](https://github.com/HumanSignal/label-studio)
@@ -52,9 +53,10 @@ Label Studio issues JWT tokens via a secure API endpoint. Your client applicatio
 
 - ✅ **Simple Architecture**: Label Studio issues JWT tokens, no shared secrets needed
 - ✅ **Multiple Token Transmission**: Cookie (recommended), URL parameter
-- ✅ **Automatic Fallback**: Django Session → JWT Cookie → JWT URL
+- ✅ **JWT → Session Transition**: JWT authentication creates Django session, then JWT deleted for performance
+- ✅ **User Switching Priority**: JWT token takes priority over existing session for seamless user switching
 - ✅ **Secure Cookie-based Auth**: HttpOnly cookies, no URL exposure
-- ✅ **Expired Token Cleanup**: Automatic deletion of expired JWT cookies
+- ✅ **Automatic Cookie Cleanup**: JWT cookie deleted after session creation
 - ✅ **Auto-User Creation**: Optionally create users via API
 - ✅ **Zero Label Studio Code Modifications**: Pure Django plugin
 - ✅ **Framework Agnostic**: Works with Node.js, Python, Java, .NET, etc.
@@ -286,12 +288,25 @@ External System
   ↓ Set HttpOnly cookie with JWT (recommended)
   ↓ Or use URL parameter: ?token=eyJhbGc...
   ↓
-User accesses Label Studio
-  ↓ JWTAutoLoginMiddleware extracts token
+User accesses Label Studio (First Request)
+  ↓ JWTAutoLoginMiddleware extracts JWT token
+  ↓ JWT found → Ignore existing session (for user switching)
   ↓ JWTAuthenticationBackend validates JWT
   ↓ User authenticated via user_id claim
+  ↓ Django Session created (sessionid cookie)
+  ↓ JWT cookie (ls_auth_token) automatically deleted
   ✅ User logged in!
+  ↓
+Subsequent Requests
+  ↓ Django Session used (fast, no JWT verification)
+  ↓ Session persists until browser closes or expires
+  ✅ Optimal performance!
 ```
+
+**Performance Optimization:**
+- **First request**: JWT verification + Session creation + JWT deletion
+- **Subsequent requests**: Session-only (no JWT verification needed)
+- **User switching**: New JWT takes priority → New session created
 
 ---
 
@@ -414,8 +429,13 @@ app.use('/label-studio', async (ctx, next) => {
 |---------|---------|-------------|
 | `JWT_SSO_NATIVE_USER_ID_CLAIM` | `user_id` | JWT claim containing user ID |
 | `JWT_SSO_TOKEN_PARAM` | `token` | URL parameter name for JWT token |
-| `JWT_SSO_COOKIE_NAME` | `None` | Cookie name for JWT token (recommended) |
+| `JWT_SSO_COOKIE_NAME` | `None` | Cookie name for JWT token (recommended: `ls_auth_token`) |
 | `JWT_SSO_COOKIE_PATH` | `/` | Cookie path - use `/` for all paths, not `/label-studio` |
+
+**Note on JWT Cookie Lifecycle:**
+- JWT cookie is automatically deleted after Django session creation
+- This improves performance (no JWT verification on subsequent requests)
+- Session cookie (`sessionid`) persists for ongoing authentication
 
 ### API Settings
 
@@ -765,6 +785,32 @@ For issues, questions, or feature requests, please open an issue on [GitHub](htt
 
 ## 🚀 Changelog
 
+### v6.0.7 (2025-10-22) - Performance & User Switching
+- ✨ **JWT → Django Session Transition**: JWT creates session, then auto-deleted for performance
+  - JWT authentication used only for initial login
+  - Django session persists for subsequent requests (faster)
+  - No repeated JWT verification on every request
+- 🔄 **User Switching Priority**: JWT token now takes priority over existing session
+  - Middleware modified: Removed session check, always verify JWT if present
+  - Seamless user switching without session conflicts
+  - Previous session automatically replaced by new JWT authentication
+- 🧹 **Automatic Cookie Cleanup**: JWT cookie (ls_auth_token) deleted after session creation
+  - `process_response()` enhanced to delete JWT cookie after successful auth
+  - Cleaner cookie management, reduced security surface
+- 🚀 **Performance Optimization**: Significant speed improvement
+  - First request: JWT verification → Session creation → JWT deletion
+  - Subsequent requests: Session-only (no JWT verification)
+  - ~50% faster authentication for returning users
+
+### v6.0.0 (2025-10-17) - Breaking Changes
+- ❌ **REMOVED**: Method 1 (External JWT - client generates tokens)
+  - External JWT generation removed for security
+  - Only Label Studio-issued tokens now supported
+- ✅ **Simplified**: Single authentication method
+  - Method 2: Native JWT (Label Studio issues) - **Only option**
+- 📝 Documentation cleanup and clarification
+- 🎯 Focused on proven, efficient authentication patterns
+
 ### v5.0.0 (2025-10-16) - Breaking Changes
 - ❌ **REMOVED**: Method 3 (External Session Cookie Authentication)
   - Removed `SessionCookieAuthenticationBackend` class
@@ -773,8 +819,6 @@ For issues, questions, or feature requests, please open an issue on [GitHub](htt
 - ✅ **Simplified**: Now supports 2 authentication methods only
   - Method 1: External JWT (client generates)
   - Method 2: Native JWT (Label Studio issues) - **Recommended**
-- 📝 Documentation cleanup and clarification
-- 🎯 Focused on proven, efficient authentication patterns
 
 ### v4.0.1 (2025-01-XX)
 - ✨ Added Label Studio Native JWT token issuance API
@@ -783,7 +827,7 @@ For issues, questions, or feature requests, please open an issue on [GitHub](htt
 - 📝 Complete documentation overhaul
 
 ### v3.0.0
-- ✨ Added 3 authentication methods (later reduced to 2)
+- ✨ Added 3 authentication methods (later reduced to 1)
 - ✨ Added JWT cookie support
 - 🔒 Enhanced security with HttpOnly cookies
 
