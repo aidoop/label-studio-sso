@@ -293,7 +293,7 @@ User accesses Label Studio (First Request)
   ↓ JWT found → Ignore existing session (for user switching)
   ↓ JWTAuthenticationBackend validates JWT
   ↓ User authenticated via user_id claim
-  ↓ Django Session created (sessionid cookie)
+  ↓ Django Session created (ls_sessionid cookie)
   ↓ JWT cookie (ls_auth_token) automatically deleted
   ✅ User logged in!
   ↓
@@ -435,7 +435,7 @@ app.use('/label-studio', async (ctx, next) => {
 **Note on JWT Cookie Lifecycle:**
 - JWT cookie is automatically deleted after Django session creation
 - This improves performance (no JWT verification on subsequent requests)
-- Session cookie (`sessionid`) persists for ongoing authentication
+- Session cookie (`ls_sessionid`) persists for ongoing authentication
 
 ### API Settings
 

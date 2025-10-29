@@ -26,8 +26,8 @@ When Label Studio is accessed through a reverse proxy (e.g., Things Factory at `
 
 This applies to:
 - JWT SSO authentication cookies (`ls_auth_token`)
-- CSRF protection cookies (`csrftoken`)
-- Django session cookies (`sessionid`)
+- CSRF protection cookies (`ls_csrftoken`)
+- Django session cookies (`ls_sessionid`)
 
 ### Configuration Impact
 
