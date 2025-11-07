@@ -105,30 +105,21 @@ def issue_sso_token(request):
 
         logger.info(f"SSO token request for: {email} (requested by: {auth_user.email})")
 
-        # 4. Get or create user
-        auto_create = getattr(settings, "SSO_AUTO_CREATE_USERS", True)
-
+        # 4. Validate user exists (no auto-create)
         try:
             user = User.objects.get(email=email)
             logger.info(f"User found: {email}")
         except User.DoesNotExist:
-            if auto_create:
-                # Auto-create user
-                username = data.get("username", email)
-                first_name = data.get("first_name", "")
-                last_name = data.get("last_name", "")
-
-                user = User.objects.create(
-                    email=email,
-                    username=username,
-                    first_name=first_name,
-                    last_name=last_name,
-                    is_active=True,
-                )
-                logger.info(f"Auto-created user for SSO: {email}")
-            else:
-                logger.warning(f"User not found and auto-create disabled: {email}")
-                return JsonResponse({"error": "User not found"}, status=404)
+            logger.warning(f"User not found: {email}")
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"User not found: {email}",
+                    "error_code": "USER_NOT_FOUND",
+                    "email": email,
+                },
+                status=422,
+            )
 
         # 5. Generate JWT token
         exp_seconds = getattr(settings, "SSO_TOKEN_EXPIRY", 600)  # 10 minutes

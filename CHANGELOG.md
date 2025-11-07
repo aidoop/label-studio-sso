@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [6.0.8] - 2025-11-07
+
+### Changed
+
+- **Removed SSO_AUTO_CREATE_USERS feature**
+  - SSO token API now **only validates** existing users
+  - Auto-creation of users removed for security
+  - User must be pre-registered in Label Studio
+
+### Fixed
+
+- **User not found error response**
+  - Changed HTTP status code: 404 → 422 UNPROCESSABLE_ENTITY
+  - Prevents Django DEBUG=False from converting JSON to HTML
+  - Returns clear error response:
+    ```json
+    {
+      "success": false,
+      "error": "User not found: email@example.com",
+      "error_code": "USER_NOT_FOUND",
+      "email": "email@example.com"
+    }
+    ```
+
+### Breaking Changes
+
+- `SSO_AUTO_CREATE_USERS` setting is no longer supported
+- `/api/sso/token` will return 422 error if user does not exist
+- All users must be created in Label Studio before SSO login
+
 ## [6.0.7] - 2025-10-17
 
 ### Fixed

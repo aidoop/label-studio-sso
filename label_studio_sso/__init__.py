@@ -14,7 +14,7 @@ Provides:
 - Simple and secure SSO integration
 """
 
-__version__ = "6.0.7"
+__version__ = "6.0.8"
 __author__ = "Label Studio SSO Team"
 __license__ = "MIT"
 
