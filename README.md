@@ -154,8 +154,7 @@ JWT_SSO_COOKIE_PATH = '/'  # Cookie path (default: '/')
 JWT_SSO_TOKEN_PARAM = 'token'  # URL parameter (fallback)
 
 # API Configuration
-SSO_TOKEN_EXPIRY = 600  # 10 minutes
-SSO_AUTO_CREATE_USERS = True  # Auto-create users from API requests
+SSO_TOKEN_EXPIRY = 600  # 10 minutes (token expiration time)
 
 # Important: If using reverse proxy, ensure cookies work across all paths
 # CSRF_COOKIE_PATH = '/'  # Default is '/', do not change to '/label-studio'
@@ -442,7 +441,6 @@ app.use('/label-studio', async (ctx, next) => {
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `SSO_TOKEN_EXPIRY` | `600` | Token expiry time in seconds (10 minutes) |
-| `SSO_AUTO_CREATE_USERS` | `True` | Auto-create users from API requests |
 
 ---
 
@@ -556,13 +554,20 @@ python manage.py shell
 
 **Solution**:
 ```python
-# Option 1: Enable auto-create users
-SSO_AUTO_CREATE_USERS = True
-
-# Option 2: Manually create user in Label Studio
+# Create user manually in Label Studio (required since v6.0.8)
 python manage.py createsuperuser
 # Enter email that matches API request
+
+# Or use Label Studio's User Management API
+POST /api/users/
+{
+  "email": "user@example.com",
+  "username": "user@example.com",
+  "password": "secure-password"
+}
 ```
+
+**Note**: Auto-create users feature was removed in v6.0.8. All users must be pre-registered.
 
 #### 5. "API endpoint /api/sso/token returns 404"
 
